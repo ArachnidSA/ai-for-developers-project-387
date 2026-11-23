@@ -1,0 +1,5 @@
+# Сгенерированные артефакты записываются генераторами в LF. Фиксируем LF и для
+# рабочей копии: иначе на Windows (core.autocrlf=true) `mise run gen` оставляет
+# рабочее дерево «грязным», хотя содержимое не меняется.
+contract/openapi.json text eol=lf
+frontend/src/api/generated/** text eol=lf

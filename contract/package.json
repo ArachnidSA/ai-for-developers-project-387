@@ -1,0 +1,19 @@
+{
+  "name": "calendar-contract",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "TypeSpec-описание API «Calendar» — источник истины для контракта",
+  "scripts": {
+    "compile": "tsp compile .",
+    "gen:sdk": "openapi-ts -i openapi.json -o ../frontend/src/api/generated",
+    "gen": "npm run compile && npm run gen:sdk"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "@typespec/compiler": "1.18.0",
+    "@typespec/http": "1.18.0",
+    "@typespec/openapi3": "1.18.0",
+    "typescript": "5.9.3"
+  }
+}

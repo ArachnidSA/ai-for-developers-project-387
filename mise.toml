@@ -1,0 +1,124 @@
+[settings]
+experimental = true
+
+[tools]
+python = "3.14"
+uv = "0.12"
+node = "24"
+hk = "2.13"
+pitchfork = "2.35"
+gh = "2.105"
+
+[env]
+NODE_ENV = "development"
+
+[tasks.install]
+description = "Установить зависимости бэкенда и фронтенда"
+run = [
+  "uv sync --directory backend",
+  "npm --prefix frontend ci",
+]
+
+[tasks.gen]
+description = "Сгенерировать OpenAPI и клиентский SDK из TypeSpec-контракта"
+run = [
+  "npm --prefix contract ci",
+  "npm --prefix contract run gen",
+]
+
+[tasks.contract]
+description = "Сгенерировать артефакты из контракта и проверить, что они не разошлись с закоммиченными"
+depends = ["gen"]
+run = "node scripts/check-contract-drift.mjs"
+
+[tasks."lint:backend"]
+dir = "backend"
+run = "uv run ruff check ."
+
+[tasks."lint:frontend"]
+dir = "frontend"
+run = "npm run lint"
+
+[tasks.lint]
+description = "Линтеры бэкенда и фронтенда"
+depends = ["lint:backend", "lint:frontend"]
+
+[tasks."typecheck:backend"]
+dir = "backend"
+run = "uv run mypy app tests"
+
+[tasks."typecheck:frontend"]
+dir = "frontend"
+run = "npm run typecheck"
+
+[tasks.typecheck]
+description = "Проверка типов Python и TypeScript"
+depends = ["typecheck:backend", "typecheck:frontend"]
+
+[tasks."test:backend"]
+dir = "backend"
+run = "uv run pytest"
+
+[tasks."test:frontend"]
+dir = "frontend"
+run = "npm run test"
+
+[tasks.test]
+description = "Дымовые тесты бэкенда и фронтенда"
+depends = ["test:backend", "test:frontend"]
+
+[tasks.e2e]
+description = "Браузерный E2E-сценарий гостя на настоящих серверах (Playwright)"
+dir = "frontend"
+run = "npm run e2e"
+
+[tasks."docker:build"]
+description = "Собрать образ приложения из корневого Dockerfile"
+run = "docker build -t calendar-app:local -f Dockerfile ."
+
+[tasks."docker:smoke"]
+description = "Собрать образ, поднять контейнер и прогнать сценарий гостя и владельца"
+run = "node scripts/docker-smoke.mjs"
+
+[tasks."check:fast"]
+description = "Быстрая проверка: линтер, типы и тесты (без contract и e2e)"
+depends = ["lint", "typecheck", "test"]
+
+# Полная проверка — то, что запускают CI и разработчик перед выкладкой:
+# сначала быстрые проверки (check:fast), затем дрейф кодогенерации и браузерный E2E.
+# `contract` нельзя ставить в pre-commit: он считает дрейф через `git status`
+# и ложно падает при застейдженных изменениях (см. hk.pkl / AGENTS.md).
+[tasks.check]
+description = "Полная проверка: check:fast, дрейф кодогенерации и браузерный E2E"
+depends = ["check:fast"]
+run = [
+  "mise run contract",
+  "mise run e2e",
+]
+
+[tasks."dev:backend"]
+dir = "backend"
+run = "uv run fastapi dev app/main.py --port 8000"
+
+[tasks."dev:frontend"]
+dir = "frontend"
+run = "npm run dev"
+
+[daemons.backend]
+task = "dev:backend"
+ready_port = 8000
+
+[daemons.frontend]
+task = "dev:frontend"
+ready_port = 5173
+
+[tasks.dev]
+description = "Поднять бэкенд и фронтенд как фоновые демоны"
+daemons = ["backend", "frontend"]
+run = "echo backend :8000, frontend :5173"
+
+[tasks.pre-commit]
+run = "hk run pre-commit"
+
+[hooks]
+postinstall = { task = "install" }

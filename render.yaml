@@ -1,0 +1,23 @@
+version: "1"
+# Декларативное описание сервиса Render — справочная конфигурация.
+#
+# Внимание: живой сервис создан через MCP-инструмент `create_web_service`, который этот файл
+# НЕ читает (Blueprint и MCP — взаимоисключающие пути создания). Файл описывает параметры
+# сервиса и совместим с Render Blueprint, если его когда-нибудь подключат как Blueprint.
+services:
+  - type: web
+    name: ai-for-dev-386
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/healthcheck
+    autoDeployTrigger: commit
+    # Переменные окружения сервису не нужны: значения по умолчанию заданы в образе
+    # (DATABASE_URL, FRONTEND_DIST_DIR), а PORT Render подставляет сам. Если понадобится
+    # секрет — задавайте его через sync: false (значение в панели, не в репозитории):
+    # envVars:
+    #   - key: EXAMPLE_SECRET
+    #     sync: false
+    repo: https://github.com/ArachnidSA/ai-for-developers-project-386

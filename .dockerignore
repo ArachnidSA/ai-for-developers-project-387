@@ -1,0 +1,36 @@
+# Контекст сборки: всё лишнее отсекаем — образ меньше, сборка быстрее.
+#
+# История и инструментарий агентов в образ не попадают.
+.git
+.gitignore
+.github
+.agents
+skills-lock.json
+
+# Зависимости ставятся внутри образа — из контекста их исключаем.
+backend/.venv
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+frontend/node_modules
+frontend/dist
+frontend/e2e/playwright-report
+frontend/e2e/test-results
+
+# Локальные БД и кэши сборки.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+**/*.tsbuildinfo
+.oxlintcache
+
+# Локальные секреты, документация и артефакты разработки.
+.env
+.env.*
+render-api-key
+docs
+contract
+scripts

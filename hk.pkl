@@ -1,0 +1,13 @@
+amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
+
+// Лёгкая проверка для git-хука: `mise run check:fast` (lint -> typecheck -> test).
+// Полный `mise run check` сюда не годится: он включает `contract`, который считает
+// дрейф через `git status` и ложно падает при застейдженных изменениях (во время коммита).
+// Верхнеуровневые steps используются хуками check, fix и pre-commit.
+local checks = new Mapping {
+  ["check"] {
+    check = "mise run check:fast"
+  }
+}
+
+steps = checks

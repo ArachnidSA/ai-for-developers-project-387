@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "render": {
+        "type": "remote",
+        "url": "https://mcp.render.com/mcp",
+        "oauth": false,
+        "protocol": "auto",
+        "headers": {
+          "Authorization": "Bearer {file:./render-api-key}"
+        }
+      }
+    }
+  }
+}
