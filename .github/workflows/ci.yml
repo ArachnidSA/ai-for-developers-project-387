@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Ставит инструменты из mise.toml и (через postinstall-хук) зависимости проекта.
+      - name: Set up mise
+        uses: jdx/mise-action@v5
+
+      # Браузер для Playwright: e2e (внутри `mise run check`) запускает настоящий
+      # Chromium, а в образе GitHub-hosted его нет.
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # `mise run check` = check:fast (lint, typecheck, test) + contract (дрейф
+      # кодогенерации) + e2e (браузерный сценарий на настоящих серверах).
+      - name: Run checks
+        run: mise run check
