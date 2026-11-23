@@ -1,0 +1,26 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+# Права, которые нужны release-please, чтобы создать/обновить release-PR
+# и приложить метку: запись в содержимое ветки, pull requests и issues (метки).
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # По Conventional Commit в истории `main` открывает/обновляет release-PR
+      # (обновляет CHANGELOG.md и version.txt). Конфиг — манифестный:
+      # release-please-config.json + .release-please-manifest.json в корне.
+      - name: Release Please
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
