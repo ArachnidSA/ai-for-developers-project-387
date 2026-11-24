@@ -34,7 +34,8 @@ python-стадия ставит зависимости и отдаёт стат
 Приложение слушает `0.0.0.0` и порт из переменной `PORT` (Render подставляет свой).
 
 - **Сервис:** Render Web Service, Environment Docker, план Free, регион Frankfurt,
-  health check `/api/healthcheck`, автодеплой по push в `main`.
+  health check `/api/healthcheck`, автодеплой по push в `main` (для этого к репозиторию
+  подключено Render-приложение).
 - **Конфигурация:** справочно — [`render.yaml`](render.yaml). Живой сервис создан через
   MCP-инструмент Render (`create_web_service`) и `render.yaml` не читает; см.
   [`docs/mcp-render.md`](docs/mcp-render.md).
