@@ -186,8 +186,7 @@ issue/PR. Примеры: `/oc объясни этот issue`, `/opencode доб
 - **Права:** `id-token: write` и `contents: read` — как у `opencode.yml`; доступ выдаёт
   установленное приложение `opencode-agent`, отдельный токен не нужен.
 - **Ограничения:** `agent: plan` — агент не редактирует код и не открывает PR;
-  `timeout-minutes: 15`; `concurrency` по номеру issue. Скилы восстанавливаются из
-  `skills-lock.json` тем же шагом, что и в `opencode.yml`.
+  `timeout-minutes: 15`; `concurrency` по номеру issue.
 - **Результат:** агент читает `.agents/skills/triage/SKILL.md`, делает разбор (одна категория
   `bug`/`enhancement`, один state, redundancy-проверка по коду) и оставляет **один комментарий**
   с рекомендацией и, при необходимости, уточняющими вопросами. Метки он не применяет — их ставит
