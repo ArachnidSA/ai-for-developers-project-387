@@ -69,6 +69,9 @@ jobs:
           }
           JSON
 
+      - name: Restore agent skills from lockfile
+        run: npx -y skills@latest install
+      
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
         env:
