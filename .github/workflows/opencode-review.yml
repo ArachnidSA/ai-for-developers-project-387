@@ -31,6 +31,9 @@ jobs:
         with:
           # Полная история нужна, чтобы вычислить merge-base и дифф относительно базовой ветки
           fetch-depth: 0
+          # Действие комментирует через env GITHUB_TOKEN, а не git-креденшелы, поэтому токен
+          # в .git/config не кладём
+          persist-credentials: false
 
       - name: OpenCode setup
         uses: ./.github/actions/opencode-setup
