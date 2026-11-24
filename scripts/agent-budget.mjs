@@ -36,7 +36,8 @@ export function classifyReason({
   elapsed,
   timeout,
 }) {
-  if (budgetOutcome === 'failure') return 'infra'
+  // Любой нештатный исход шага бюджета — инфраструктура: доверять `allowed` нельзя.
+  if (budgetOutcome !== 'success') return 'infra'
   if (allowed !== true) return 'limit_exhausted'
   if (setupOutcome === 'failure') return 'infra'
   if (modelOutcome === 'failure' || modelOutcome === 'cancelled') {

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
-import { classifyReason, usedAttempts } from './agent-budget.mjs'
+import { AGENT_TIMEOUT_SECONDS, BUDGET_LIMIT, classifyReason, usedAttempts } from './agent-budget.mjs'
 
 test('usedAttempts: считает попытки по метке и исключает свой прогон', () => {
   const runs = [
@@ -44,8 +45,23 @@ test('classifyReason: сбой бюджета и подготовки — infra,
     timeout: 1500,
   }
   assert.equal(classifyReason({ ...base, budgetOutcome: 'failure' }), 'infra')
+  assert.equal(classifyReason({ ...base, budgetOutcome: 'cancelled' }), 'infra')
   assert.equal(classifyReason({ ...base, allowed: false }), 'limit_exhausted')
   assert.equal(classifyReason({ ...base, setupOutcome: 'failure' }), 'infra')
+})
+
+test('AGENT_TIMEOUT_SECONDS согласован с timeout-minutes шага модели', () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/opencode.yml', import.meta.url),
+    'utf8',
+  )
+  const match = workflow.match(/id:\s*model\b[\s\S]*?timeout-minutes:\s*(\d+)/)
+  assert.ok(match, 'в opencode.yml должен быть шаг модели с timeout-minutes')
+  assert.equal(Number(match[1]) * 60, AGENT_TIMEOUT_SECONDS)
+})
+
+test('BUDGET_LIMIT положительный', () => {
+  assert.ok(BUDGET_LIMIT > 0)
 })
 
 test('classifyReason: таймаут и сбой агента', () => {

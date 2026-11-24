@@ -62,15 +62,12 @@ jobs:
               (context.payload.pull_request && context.payload.pull_request.number) || ''
             )
             const tag = `oc #${number}`
-            const runs = []
-            for (const event of ['issue_comment', 'pull_request_review_comment']) {
-              const page = await github.paginate(
-                github.rest.actions.listWorkflowRuns,
-                { ...context.repo, workflow_id: 'opencode.yml', event, per_page: 100 },
-                (response) => response.data.workflow_runs
-              )
-              runs.push(...page)
-            }
+            // Один пагинированный вызов по воркфлоу; нужные прогоны отбирает usedAttempts по метке.
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              { ...context.repo, workflow_id: 'opencode.yml', per_page: 100 },
+              (response) => response.data.workflow_runs
+            )
             const used = usedAttempts(runs, tag, context.runId)
             const allowed = used < BUDGET_LIMIT
             core.info(`agent budget: tag=${tag} used=${used} limit=${BUDGET_LIMIT} allowed=${allowed}`)
@@ -82,13 +79,11 @@ jobs:
         if: steps.budget.outputs.allowed == 'true'
         uses: ./.github/actions/opencode-setup
 
-      # Маркеры времени (в RUNNER_TEMP, вне рабочего дерева) нужны, чтобы отличить таймаут
-      # вызова от прочей ошибки агента: таймаут шага и падение дают один и тот же outcome.
+      # Маркер времени старта (в RUNNER_TEMP, вне рабочего дерева) нужен, чтобы отличить
+      # таймаут вызова от прочей ошибки агента: таймаут шага и падение дают один outcome.
       - name: Mark agent running
         if: steps.budget.outputs.allowed == 'true'
-        run: |
-          date +%s > "$RUNNER_TEMP/agent-start"
-          echo 1500 > "$RUNNER_TEMP/agent-timeout"
+        run: date +%s > "$RUNNER_TEMP/agent-start"
 
       - name: Run OpenCode
         id: model
@@ -126,10 +121,8 @@ jobs:
             const tmp = process.env.RUNNER_TEMP
             const done = fs.existsSync(path.join(tmp, 'agent-done'))
             let elapsed = 0
-            let timeout = AGENT_TIMEOUT_SECONDS
             try {
               elapsed = Math.floor(Date.now() / 1000) - Number(fs.readFileSync(path.join(tmp, 'agent-start'), 'utf8').trim())
-              timeout = Number(fs.readFileSync(path.join(tmp, 'agent-timeout'), 'utf8').trim()) || timeout
             } catch {}
 
             const reason = classifyReason({
@@ -139,7 +132,7 @@ jobs:
               modelOutcome: process.env.MODEL_OUTCOME,
               done,
               elapsed,
-              timeout,
+              timeout: AGENT_TIMEOUT_SECONDS,
             })
             if (!reason) return
 
