@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.5...v0.2.6) (2026-11-24)
+
+
+### Continuous Integration
+
+* добавить автотриаж новых обращений ([#21](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/21)) ([9fcbc6d](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/9fcbc6d246bb434ddff1a6b0aa2f38b209f2c366))
+
 ## [0.2.5](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.4...v0.2.5) (2026-11-24)
 
 
