@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.1...v0.2.2) (2026-11-24)
+
+
+### Documentation
+
+* добавить раздел «Деплой (Render)» в README ([ca4c48f](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/ca4c48f7eb52ab43f0a590d8349acae57a02e103))
+
+
+### Miscellaneous Chores
+
+* привести render.yaml к сервису ai-for-developers-project-387 ([9586c80](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/9586c80691701c48f60a090f09c46aeb4a233ba5))
+
 ## [0.2.1](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.0...v0.2.1) (2026-11-23)
 
 
