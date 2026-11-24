@@ -1,0 +1,106 @@
+name: opencode-triage
+
+on:
+  issues:
+    types: [opened]
+
+# Один автотриаж на issue за раз — два обращения не мешают друг другу
+concurrency:
+  group: opencode-triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    # Автотриаж нужен только для НОВЫХ обращений людей.
+    # Пропускаем:
+    #  - ботов: готовые тикеты и спеки создаёт opencode-agent, их триажить не надо;
+    #  - уже размеченные обращения (готовые тикеты несут ready-for-agent и т.п.);
+    #  - отклонённые (wontfix).
+    if: |
+      github.event.issue.user.type != 'Bot' &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
+      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
+      !contains(github.event.issue.labels.*.name, 'needs-info') &&
+      !contains(github.event.issue.labels.*.name, 'wontfix')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Проектный opencode.json ссылается на {file:./render-api-key}; в CI файла нет, а его
+      # отсутствие фатально для конфига. Пустой файл (он в .gitignore) это чинит.
+      - name: Provide empty render-api-key for the project config
+        run: touch render-api-key
+
+      # Провайдер provod.ai объявляем в глобальном конфиге OpenCode (~/.config/opencode),
+      # а не в репозитории: рабочий каталог остаётся чистым.
+      - name: Configure provod.ai provider for the run
+        run: |
+          mkdir -p "$HOME/.config/opencode"
+          cat > "$HOME/.config/opencode/opencode.json" <<'JSON'
+          {
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {
+              "provod": {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "provod.ai",
+                "options": {
+                  "baseURL": "https://api.provod.ai/v1",
+                  "apiKey": "{env:PROVOD_API_KEY}"
+                },
+                "models": {
+                  "deepseek-v4.1-flash": {
+                    "name": "DeepSeek V4.1 Flash",
+                    "limit": { "context": 1048576, "output": 943718 },
+                    "reasoning": true,
+                    "temperature": true,
+                    "tool_call": true,
+                    "attachment": true,
+                    "modalities": { "input": ["text", "image"], "output": ["text"] }
+                  }
+                }
+              }
+            }
+          }
+          JSON
+
+      # Скилы не коммитятся (.agents/ в .gitignore); восстанавливаем их из skills-lock.json,
+      # чтобы агент мог прочитать .agents/skills/triage/SKILL.md.
+      - name: Restore agent skills from lockfile
+        run: npx -y skills@latest install
+
+      - name: Run OpenCode triage
+        uses: anomalyco/opencode/github@latest
+        env:
+          PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY }}
+        with:
+          model: provod/deepseek-v4.1-flash
+          # plan-агент не правит код — автотриаж только анализирует и отвечает комментарием
+          agent: plan
+          prompt: |
+            Это автотриаж нового обращения (issue #${{ github.event.issue.number }}).
+            Прочитай файл .agents/skills/triage/SKILL.md и docs/agents/issue-tracker.md и выполни
+            разбор строго по этому процессу.
+
+            Обязательно:
+            - сделай redundancy-проверку: поищи в коде уже существующую реализацию по доменным
+              понятиям (а не по формулировке запроса) и укажи, где именно искал;
+            - выбери РОВНО одну категорию (bug или enhancement) и РОВНО один state
+              (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix);
+            - если данных не хватает — задай конкретные уточняющие вопросы одним раундом.
+
+            Результат — ровно один комментарий к этому issue с итогом разбора: категория,
+            рекомендованный state, рекомендованные метки, краткий бриф и, при необходимости,
+            уточняющие вопросы. Первая строка комментария — дисклеймер
+            «> *Сгенерировано ИИ во время triage.*».
+
+            Жёсткие ограничения: НЕ меняй код и файлы, НЕ создавай ветки и pull request,
+            НЕ закрывай issue, НЕ применяй метки. Только анализ и один комментарий.

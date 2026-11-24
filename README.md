@@ -143,6 +143,8 @@ OpenCode видит скилы из `.agents/skills/` автоматически
 `.github/workflows/hexlet-check.yml` — проверки курса Hexlet (не редактируется).
 `.github/workflows/opencode.yml` — запуск агента OpenCode по упоминанию в комментарии; см.
 [ниже](#агент-opencode-по-комментарию-opencodeyml).
+`.github/workflows/opencode-triage.yml` — автотриаж новых обращений; см.
+[ниже](#автотриаж-новых-обращений-opencode-triageyml).
 
 ### Агент OpenCode по комментарию (`opencode.yml`)
 
@@ -167,6 +169,27 @@ Actions — без локального запуска и без отдельн�
 `GITHUB_TOKEN`-права или PAT не нужны. Ран запускают только авторы с ролью
 `OWNER`/`MEMBER`/`COLLABORATOR`; у джобы есть `timeout-minutes: 30` и `concurrency` по номеру
 issue/PR. Примеры: `/oc объясни этот issue`, `/opencode добавь тесты`.
+
+### Автотриаж новых обращений (`opencode-triage.yml`)
+
+Воркфлоу `.github/workflows/opencode-triage.yml` сам разбирает каждое новое обращение — без
+упоминания `/oc` в комментарии.
+
+- **Событие:** `issues` типа `opened` (срабатывает только на issues, не на PR).
+- **Фильтры (кого пропускаем):** автотриаж не запускается для обращений от ботов
+  (`github.event.issue.user.type == 'Bot'`) и для уже размеченных обращений — с метками
+  `ready-for-agent`, `ready-for-human`, `needs-triage`, `needs-info`, `wontfix`. Благодаря
+  этому **готовые тикеты**, которые создаёт `to-tickets` (автор — `opencode-agent`, метка
+  `ready-for-agent`), остаются нетронутыми.
+- **Права:** `id-token: write` и `contents: read` — как у `opencode.yml`; доступ выдаёт
+  установленное приложение `opencode-agent`, отдельный токен не нужен.
+- **Ограничения:** `agent: plan` — агент не редактирует код и не открывает PR;
+  `timeout-minutes: 15`; `concurrency` по номеру issue. Скилы восстанавливаются из
+  `skills-lock.json` тем же шагом, что и в `opencode.yml`.
+- **Результат:** агент читает `.agents/skills/triage/SKILL.md`, делает разбор (одна категория
+  `bug`/`enhancement`, один state, redundancy-проверка по коду) и оставляет **один комментарий**
+  с рекомендацией и, при необходимости, уточняющими вопросами. Метки он не применяет — их ставит
+  мейнтейнер по рекомендации.
 
 ## Релизы
 
