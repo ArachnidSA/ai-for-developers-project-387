@@ -205,13 +205,19 @@ issue/PR. Примеры: `/oc объясни этот issue`, `/opencode доб
 - **Права:** `id-token: write` и `contents: read` — как у `opencode.yml`; доступ выдаёт
   установленное приложение `opencode-agent`.
 - **Ограничения:** `agent: plan` — агент не редактирует код, не одобряет и не мержит PR;
-  `timeout-minutes: 20`.
+  `timeout-minutes: 20`. PR из форков пропускаются: GitHub не передаёт таким прогонам секреты,
+  и ревью упало бы вместо комментария.
 - **Устаревшее ревью отменяется:** `concurrency` по номеру PR с `cancel-in-progress: true` —
   новый push отменяет прогон по старой ревизии.
 - **Результат:** один комментарий к PR с находками по файлам и итогом по уровням.
 
 **Шаблон PR** — `.github/PULL_REQUEST_TEMPLATE.md`: разделы «Что и зачем», «Тип изменения»,
 «Проверки», «Риск», «Откат».
+
+**Общая подготовка.** Шаги, общие для всех трёх воркфлоу (`opencode.yml`,
+`opencode-triage.yml`, `opencode-review.yml`), вынесены в composite action
+`.github/actions/opencode-setup`: пустой `render-api-key` для проектного конфига, объявление
+провайдера provod.ai в глобальном конфиге и восстановление скилов из `skills-lock.json`.
 
 ## Релизы
 
