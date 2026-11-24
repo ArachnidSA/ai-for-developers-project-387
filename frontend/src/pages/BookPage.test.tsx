@@ -55,6 +55,21 @@ const CREATED_BOOKING: Booking = {
   end: MORNING_SLOT.end,
 }
 
+const SHORT_MEETING: EventType = {
+  id: 2,
+  name: 'Короткая встреча',
+  description: 'Быстрый созвон',
+  duration_minutes: 30,
+  status: 'active',
+}
+
+// Длительность слота (45 мин) намеренно отличается от duration_minutes (30),
+// чтобы тест основного пути отличал источник значения от фолбэка.
+const SHORT_SLOT: Slot = {
+  start: '2026-11-20T04:00:00Z',
+  end: '2026-11-20T04:45:00Z',
+}
+
 const fullDateFormatter = new Intl.DateTimeFormat('ru-RU', {
   weekday: 'short',
   day: 'numeric',
@@ -197,6 +212,55 @@ describe('экран записи гостя', () => {
 
     const confirmation = await screen.findByText(/Мы ждём вас/)
     expect(confirmation.textContent).not.toContain('Тип события')
+  })
+
+  it('показывает длительность выбранного типа в подтверждении', async () => {
+    listEventTypesMock.mockResolvedValue([SHORT_MEETING])
+    listEventTypeSlotsMock.mockResolvedValue([SHORT_SLOT])
+    createBookingMock.mockResolvedValue({
+      ...CREATED_BOOKING,
+      event_type_id: SHORT_MEETING.id,
+      start: SHORT_SLOT.start,
+      end: SHORT_SLOT.end,
+    })
+
+    renderBookPage()
+    await screen.findByText('Короткая встреча')
+    fireEvent.click(screen.getByRole('button', { name: /Короткая встреча/ }))
+    selectDay(0)
+    fireEvent.click(await screen.findByTestId('slot'))
+
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Анна' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    const confirmation = await screen.findByText(/Мы ждём вас/)
+    // Тип в списке есть → длительность из duration_minutes (30), а не из слота (45).
+    expect(confirmation.textContent).toContain('Тип события: Короткая встреча, 30 мин')
+    expect(confirmation.textContent).not.toContain('45 мин')
+  })
+
+  it('показывает длительность из start/end, когда тип недоступен в списке', async () => {
+    listEventTypesMock.mockResolvedValue([MEETING])
+    listEventTypeSlotsMock.mockResolvedValue([MORNING_SLOT])
+    createBookingMock.mockResolvedValue({
+      ...CREATED_BOOKING,
+      event_type_id: 999,
+      start: '2026-11-20T04:00:00Z',
+      end: '2026-11-20T04:45:00Z',
+    })
+
+    renderBookPage()
+    await screen.findByText('Встреча 60 минут')
+    fireEvent.click(screen.getByRole('button', { name: /Встреча 60 минут/ }))
+    selectDay(0)
+    fireEvent.click(await screen.findByTestId('slot'))
+
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Анна' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    const confirmation = await screen.findByText(/Мы ждём вас/)
+    expect(confirmation.textContent).not.toContain('Тип события')
+    expect(confirmation.textContent).toContain('45 мин')
   })
 
   it('отправляет только имя, когда email и заметка пустые', async () => {
