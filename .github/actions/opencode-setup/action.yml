@@ -43,7 +43,10 @@ runs:
                 }
               }
             }
-          }
+          },
+          "permissions": [
+            { "action": "external_directory", "resource": "*", "effect": "allow" }
+          ]
         }
         JSON
 

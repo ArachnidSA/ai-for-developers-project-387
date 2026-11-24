@@ -1,5 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    { "action": "external_directory", "resource": "*", "effect": "allow" }
+  ],
+  "agents": {
+    "build": {
+      "permissions": [
+        { "action": "external_directory", "resource": "*", "effect": "allow" }
+      ]
+    }
+  },
   "mcp": {
     "servers": {
       "render": {
