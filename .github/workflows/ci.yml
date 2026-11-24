@@ -40,6 +40,10 @@ jobs:
   # Задание без секретов — модель здесь не вызывается.
   e2e-verify:
     if: github.event_name == 'pull_request'
+    # Серия быстрых пушей не должна поднимать параллельные полные e2e-прогоны
+    concurrency:
+      group: e2e-verify-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:

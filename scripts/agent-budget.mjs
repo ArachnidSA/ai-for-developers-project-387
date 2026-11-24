@@ -39,7 +39,7 @@ export function classifyReason({
   // Любой нештатный исход шага бюджета — инфраструктура: доверять `allowed` нельзя.
   if (budgetOutcome !== 'success') return 'infra'
   if (allowed !== true) return 'limit_exhausted'
-  if (setupOutcome === 'failure') return 'infra'
+  if (setupOutcome === 'failure' || setupOutcome === 'cancelled') return 'infra'
   if (modelOutcome === 'failure' || modelOutcome === 'cancelled') {
     // Таймаут шага и падение дают один и тот же outcome; считаем таймаутом,
     // если вызов не завершился и время близко к пределу шага.

@@ -48,6 +48,7 @@ test('classifyReason: сбой бюджета и подготовки — infra,
   assert.equal(classifyReason({ ...base, budgetOutcome: 'cancelled' }), 'infra')
   assert.equal(classifyReason({ ...base, allowed: false }), 'limit_exhausted')
   assert.equal(classifyReason({ ...base, setupOutcome: 'failure' }), 'infra')
+  assert.equal(classifyReason({ ...base, setupOutcome: 'cancelled' }), 'infra')
 })
 
 test('AGENT_TIMEOUT_SECONDS согласован с timeout-minutes шага модели', () => {
