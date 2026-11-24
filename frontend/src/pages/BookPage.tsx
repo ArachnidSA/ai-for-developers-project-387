@@ -17,9 +17,22 @@ const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
   minute: '2-digit',
 })
 
+/** Полная дата подтверждения в локальном поясе гостя: день недели, число, месяц, год. */
+const fullDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
 function formatDay(iso: string): string {
   const [year, month, date] = iso.split('-').map(Number)
   return dayLabelFormatter.format(new Date(year, month - 1, date))
+}
+
+/** Дата слота в локальном поясе гостя (в API момент приходит в UTC). */
+function formatFullDate(iso: string): string {
+  return fullDateFormatter.format(new Date(iso))
 }
 
 /** Время слота в локальном поясе гостя (в API время приходит в UTC). */
@@ -123,11 +136,17 @@ function BookPage() {
   }
 
   if (created !== null) {
+    // Название типа берём из уже загруженного списка по id записи; контракт его не несёт.
+    const eventTypeName = eventTypes.find(
+      (eventType) => eventType.id === created.event_type_id,
+    )?.name
+    const typeClause = eventTypeName ? ` Тип события: ${eventTypeName}.` : ''
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 p-8">
         <h1 className="text-3xl font-bold tracking-tight">Запись оформлена</h1>
         <p>
-          Мы ждём вас {formatTimeRange(created)}. Имя: {created.guest_name}
+          Мы ждём вас {formatFullDate(created.start)}, {formatTimeRange(created)}.{typeClause} Имя:{' '}
+          {created.guest_name}
         </p>
         <div className="flex items-center gap-4">
           <button
