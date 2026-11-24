@@ -139,8 +139,9 @@ OpenCode видит скилы из `.agents/skills/` автоматически
 `.github/workflows/ci.yml` на каждый push запускает `mise run check` — тот же полный набор, что и
 локально: `check:fast` (lint, typecheck, test), `contract` (дрейф кодогенерации) и `e2e`
 (браузерный сценарий). Перед проверками CI ставит браузер:
-`npx playwright install --with-deps chromium`. В `ci.yml` два задания: `check` — полный набор, и
-`e2e-verify` — проверка версии PR по head SHA с trace-артефактом; см.
+`npx playwright install --with-deps chromium`. В `ci.yml` два задания: на pull request `check`
+гоняет `check:fast` + `contract` (e2e не дублируется), на push — полный `mise run check`;
+`e2e-verify` проверяет версию PR по head SHA с trace-артефактом; см.
 [ниже](#проверка-версии-pr-e2e-verify).
 `.github/workflows/hexlet-check.yml` — проверки курса Hexlet (не редактируется).
 `.github/workflows/opencode.yml` — запуск агента OpenCode по упоминанию в комментарии; см.

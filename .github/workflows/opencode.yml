@@ -61,11 +61,17 @@ jobs:
                 (response) => response.data.workflow_runs
               )
               for (const run of runs) {
-                if (run.display_title === tag || run.name === tag) used += run.run_attempt || 1
+                if (run.display_title !== tag && run.name !== tag) continue
+                const attempts = run.run_attempt || 1
+                // Свой прогон исключаем по id и учитываем только его прошлые попытки (Re-run),
+                // чтобы предел не зависел от того, успел ли текущий прогон попасть в API.
+                used += run.id === context.runId ? attempts - 1 : attempts
               }
             }
+            const allowed = used < LIMIT
+            core.info(`agent budget: tag=${tag} used=${used} limit=${LIMIT} allowed=${allowed}`)
             core.setOutput('used', String(used))
-            core.setOutput('allowed', used <= LIMIT ? 'true' : 'false')
+            core.setOutput('allowed', allowed ? 'true' : 'false')
 
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -77,13 +83,14 @@ jobs:
         id: setup
         uses: ./.github/actions/opencode-setup
 
-      # Маркеры нужны, чтобы отличить таймаут вызова от прочей ошибки агента:
-      # таймаут шага и падение дают один и тот же outcome "failure".
+      # Маркеры времени нужны, чтобы отличить таймаут вызова от прочей ошибки агента:
+      # таймаут шага и падение дают один и тот же outcome. Значение .agent-timeout
+      # должно совпадать с timeout-minutes шага модели ниже.
       - name: Mark agent running
         if: steps.budget.outputs.allowed == 'true'
         run: |
           date +%s > .agent-start
-          touch .agent-running
+          echo 1500 > .agent-timeout
 
       - name: Run OpenCode
         id: model
@@ -119,14 +126,16 @@ jobs:
             let reason = ''
             if (allowed !== 'true') reason = 'limit_exhausted'
             else if (setup === 'failure') reason = 'infra'
-            else if (model === 'failure') {
+            else if (model === 'failure' || model === 'cancelled') {
               const done = fs.existsSync('.agent-done')
               let elapsed = 0
+              let limit = 1500
               try {
                 elapsed = Math.floor(Date.now() / 1000) - Number(fs.readFileSync('.agent-start', 'utf8').trim())
+                limit = Number(fs.readFileSync('.agent-timeout', 'utf8').trim()) || limit
               } catch {}
-              // Шаг модели ограничен 25 минутами: если падение близко к этому пределу — это таймаут.
-              reason = !done && elapsed >= 1200 ? 'timeout' : 'agent_failed'
+              // Успел ли вызов упереться в свой таймаут: время близко к пределу шага.
+              reason = !done && elapsed >= limit - 60 ? 'timeout' : 'agent_failed'
             }
             if (!reason) return
 
