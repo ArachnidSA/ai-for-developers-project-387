@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.3...v0.2.4) (2026-11-24)
+
+
+### Documentation
+
+* наполнить README проектной информацией и адресом приложения ([0e45c8d](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/0e45c8d4902b703fbce27b0b8731e41d864a2678))
+
 ## [0.2.3](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.2...v0.2.3) (2026-11-24)
 
 
