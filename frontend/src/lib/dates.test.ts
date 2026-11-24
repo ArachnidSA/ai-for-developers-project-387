@@ -5,7 +5,9 @@ import {
   bookingDays,
   dayInTimeZone,
   isWithinBookingWindow,
+  ownerTimeZoneLabel,
   OWNER_TIME_ZONE,
+  utcOffsetLabel,
 } from './dates'
 
 // Момент, когда в UTC ещё 20-е число, а у владельца (UTC+5) уже 21-е.
@@ -43,5 +45,23 @@ describe('дни окна записи считаются в поясе влад
     expect(bookingDays(LATE_EVENING_UTC)).toEqual(
       bookingDays(LATE_EVENING_UTC, { timeZone: OWNER_TIME_ZONE }),
     )
+  })
+})
+
+describe('подпись часового пояса', () => {
+  it('показывает смещение пояса владельца', () => {
+    expect(utcOffsetLabel(LATE_EVENING_UTC, OWNER_TIME_ZONE)).toBe('UTC+5')
+  })
+
+  it('показывает нецелое смещение пояса', () => {
+    expect(utcOffsetLabel(LATE_EVENING_UTC, 'Asia/Kolkata')).toBe('UTC+5:30')
+  })
+
+  it('для нулевого смещения подписывает просто UTC', () => {
+    expect(utcOffsetLabel(LATE_EVENING_UTC, 'UTC')).toBe('UTC')
+  })
+
+  it('собирает подпись владельца из города и смещения', () => {
+    expect(ownerTimeZoneLabel(LATE_EVENING_UTC)).toBe('Екатеринбург, UTC+5')
   })
 })

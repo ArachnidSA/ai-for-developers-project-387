@@ -49,6 +49,15 @@ describe('секция предстоящих записей', () => {
     expect(screen.getByText('Обсудить проект')).toBeTruthy()
   })
 
+  it('подписывает время поясом владельца', async () => {
+    listUpcomingBookingsMock.mockResolvedValue([BOOKING])
+
+    render(<UpcomingBookings />)
+
+    const zone = await screen.findByTestId('owner-zone')
+    expect(zone.textContent).toBe('Пояс: Екатеринбург, UTC+5')
+  })
+
   it('показывает пустое состояние, когда записей нет', async () => {
     listUpcomingBookingsMock.mockResolvedValue([])
 

@@ -168,6 +168,38 @@ describe('экран записи гостя', () => {
     expect(await screen.findByText('Запись оформлена')).toBeTruthy()
   })
 
+  it('подписывает пояс гостя и указывает дату и пояс в подтверждении', async () => {
+    listEventTypesMock.mockResolvedValue([MEETING])
+    listEventTypeSlotsMock.mockResolvedValue([MORNING_SLOT])
+    createBookingMock.mockResolvedValue(CREATED_BOOKING)
+
+    renderBookPage()
+    await screen.findByText('Встреча 60 минут')
+    fireEvent.click(screen.getByRole('button', { name: /Встреча 60 минут/ }))
+    selectDay(0)
+
+    const guestZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    expect((await screen.findByTestId('guest-zone')).textContent).toBe(`Пояс: ${guestZone}`)
+
+    fireEvent.click(await screen.findByTestId('slot'))
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Анна' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    const confirmation = await screen.findByTestId('confirmation')
+    const localTime = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    const expectedRange = `${localTime.format(new Date(MORNING_SLOT.start))}–${localTime.format(
+      new Date(MORNING_SLOT.end),
+    )}`
+    const expectedDate = new Intl.DateTimeFormat('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+    }).format(new Date(CREATED_BOOKING.start))
+
+    expect(confirmation.textContent).toContain(expectedDate)
+    expect(confirmation.textContent).toContain(expectedRange)
+    expect(confirmation.textContent).toContain(guestZone)
+  })
+
   it('отправляет только имя, когда email и заметка пустые', async () => {
     listEventTypesMock.mockResolvedValue([MEETING])
     listEventTypeSlotsMock.mockResolvedValue([MORNING_SLOT])

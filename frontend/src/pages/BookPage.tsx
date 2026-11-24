@@ -17,6 +17,14 @@ const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
   minute: '2-digit',
 })
 
+const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+})
+
+// Пояс гостя — пояс браузера (ADR-0002): и время слотов, и подтверждение показываем в нём.
+const GUEST_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
+
 function formatDay(iso: string): string {
   const [year, month, date] = iso.split('-').map(Number)
   return dayLabelFormatter.format(new Date(year, month - 1, date))
@@ -126,8 +134,9 @@ function BookPage() {
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 p-8">
         <h1 className="text-3xl font-bold tracking-tight">Запись оформлена</h1>
-        <p>
-          Мы ждём вас {formatTimeRange(created)}. Имя: {created.guest_name}
+        <p data-testid="confirmation">
+          Мы ждём вас {dateFormatter.format(new Date(created.start))},{' '}
+          {formatTimeRange(created)} (пояс {GUEST_TIME_ZONE}). Имя: {created.guest_name}
         </p>
         <div className="flex items-center gap-4">
           <button
@@ -199,6 +208,9 @@ function BookPage() {
       {selectedTypeId !== null && selectedDay !== null && (
         <section className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold">Свободные слоты</h2>
+          <p className="text-muted-foreground text-sm" data-testid="guest-zone">
+            Пояс: {GUEST_TIME_ZONE}
+          </p>
           {slotsError !== null ? (
             <p className="text-sm text-red-600">{slotsError}</p>
           ) : slots === null ? (

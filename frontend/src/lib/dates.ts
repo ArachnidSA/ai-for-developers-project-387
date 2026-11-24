@@ -54,3 +54,34 @@ export function isWithinBookingWindow(
 ): boolean {
   return day >= today && day <= addDays(today, windowDays - 1)
 }
+
+/** Человекочитаемое имя пояса владельца (город) для подписей времени. */
+export const OWNER_TIME_ZONE_CITY = 'Екатеринбург'
+
+/**
+ * Смещение пояса `timeZone` относительно UTC в момент `moment` в виде «UTC+5»
+ * («UTC+5:30» для нецелого смещения, «UTC» для нулевого). Смещение может зависеть
+ * от даты (переход на летнее время), поэтому передаём конкретный момент.
+ */
+export function utcOffsetLabel(moment: Date, timeZone: string = OWNER_TIME_ZONE): string {
+  const name =
+    new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' })
+      .formatToParts(moment)
+      .find((part) => part.type === 'timeZoneName')?.value ?? 'GMT'
+  const match = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(name)
+  if (match === null) {
+    return 'UTC'
+  }
+  const [, sign, hours, minutes] = match
+  const offset = Number(hours)
+  const restMinutes = minutes === undefined ? 0 : Number(minutes)
+  if (offset === 0 && restMinutes === 0) {
+    return 'UTC'
+  }
+  return restMinutes === 0 ? `UTC${sign}${offset}` : `UTC${sign}${offset}:${minutes}`
+}
+
+/** Подпись пояса владельца, например «Екатеринбург, UTC+5». */
+export function ownerTimeZoneLabel(moment: Date = new Date()): string {
+  return `${OWNER_TIME_ZONE_CITY}, ${utcOffsetLabel(moment, OWNER_TIME_ZONE)}`
+}
