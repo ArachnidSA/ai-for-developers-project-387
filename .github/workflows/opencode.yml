@@ -56,12 +56,12 @@ jobs:
             let used = 0
             for (const event of ['issue_comment', 'pull_request_review_comment']) {
               const runs = await github.paginate(
-                github.rest.actions.listWorkflowRunsForRepo,
-                { ...context.repo, event, per_page: 100 },
+                github.rest.actions.listWorkflowRuns,
+                { ...context.repo, workflow_id: 'opencode.yml', event, per_page: 100 },
                 (response) => response.data.workflow_runs
               )
               for (const run of runs) {
-                if (run.display_title !== tag && run.name !== tag) continue
+                if (run.display_title !== tag) continue
                 const attempts = run.run_attempt || 1
                 // Свой прогон исключаем по id и учитываем только его прошлые попытки (Re-run),
                 // чтобы предел не зависел от того, успел ли текущий прогон попасть в API.
@@ -113,18 +113,21 @@ jobs:
         if: always()
         uses: actions/github-script@v7
         env:
+          BUDGET_OUTCOME: ${{ steps.budget.outcome }}
           ALLOWED: ${{ steps.budget.outputs.allowed }}
           SETUP_OUTCOME: ${{ steps.setup.outcome }}
           MODEL_OUTCOME: ${{ steps.model.outcome }}
         with:
           script: |
             const fs = require('fs')
+            const budget = process.env.BUDGET_OUTCOME
             const allowed = process.env.ALLOWED
             const setup = process.env.SETUP_OUTCOME
             const model = process.env.MODEL_OUTCOME
 
             let reason = ''
-            if (allowed !== 'true') reason = 'limit_exhausted'
+            if (budget === 'failure') reason = 'infra'
+            else if (allowed !== 'true') reason = 'limit_exhausted'
             else if (setup === 'failure') reason = 'infra'
             else if (model === 'failure' || model === 'cancelled') {
               const done = fs.existsSync('.agent-done')
