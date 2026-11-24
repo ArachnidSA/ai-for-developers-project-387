@@ -1,0 +1,54 @@
+name: OpenCode setup
+description: >-
+  Общая подготовка прогона OpenCode: пустой render-api-key для проектного конфига,
+  объявление провайдера provod.ai в глобальном конфиге и восстановление скилов из lockfile.
+
+runs:
+  using: composite
+  steps:
+    # Проектный opencode.json ссылается на {file:./render-api-key}; в CI файла нет, а его
+    # отсутствие фатально для конфига. Пустой файл (он в .gitignore) это чинит и не пачкает
+    # рабочее дерево — иначе действие открыло бы лишний PR.
+    - name: Provide empty render-api-key for the project config
+      shell: bash
+      run: touch render-api-key
+
+    # Провайдер provod.ai объявляем в глобальном конфиге OpenCode (~/.config/opencode),
+    # а не в репозитории: рабочий каталог остаётся чистым. Формат provider/npm/options —
+    # тот же, что в рабочем конфиге разработчика.
+    - name: Configure provod.ai provider for the run
+      shell: bash
+      run: |
+        mkdir -p "$HOME/.config/opencode"
+        cat > "$HOME/.config/opencode/opencode.json" <<'JSON'
+        {
+          "$schema": "https://opencode.ai/config.json",
+          "provider": {
+            "provod": {
+              "npm": "@ai-sdk/openai-compatible",
+              "name": "provod.ai",
+              "options": {
+                "baseURL": "https://api.provod.ai/v1",
+                "apiKey": "{env:PROVOD_API_KEY}"
+              },
+              "models": {
+                "deepseek-v4.1-flash": {
+                  "name": "DeepSeek V4.1 Flash",
+                  "limit": { "context": 1048576, "output": 943718 },
+                  "reasoning": true,
+                  "temperature": true,
+                  "tool_call": true,
+                  "attachment": true,
+                  "modalities": { "input": ["text", "image"], "output": ["text"] }
+                }
+              }
+            }
+          }
+        }
+        JSON
+
+    # Скилы не коммитятся (.agents/ в .gitignore); восстанавливаем их из skills-lock.json,
+    # чтобы агент мог читать .agents/skills/**.
+    - name: Restore agent skills from lockfile
+      shell: bash
+      run: npx -y skills@latest install

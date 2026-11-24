@@ -145,6 +145,8 @@ OpenCode видит скилы из `.agents/skills/` автоматически
 [ниже](#агент-opencode-по-комментарию-opencodeyml).
 `.github/workflows/opencode-triage.yml` — автотриаж новых обращений; см.
 [ниже](#автотриаж-новых-обращений-opencode-triageyml).
+`.github/workflows/opencode-review.yml` — авторевью pull request по критериям `REVIEW.md`; см.
+[ниже](#авторевью-pull-request-opencode-reviewyml).
 
 ### Агент OpenCode по комментарию (`opencode.yml`)
 
@@ -184,12 +186,41 @@ issue/PR. Примеры: `/oc объясни этот issue`, `/opencode доб
 - **Права:** `id-token: write` и `contents: read` — как у `opencode.yml`; доступ выдаёт
   установленное приложение `opencode-agent`, отдельный токен не нужен.
 - **Ограничения:** `agent: plan` — агент не редактирует код и не открывает PR;
-  `timeout-minutes: 15`; `concurrency` по номеру issue. Скилы восстанавливаются из
-  `skills-lock.json` тем же шагом, что и в `opencode.yml`.
+  `timeout-minutes: 15`; `concurrency` по номеру issue.
 - **Результат:** агент читает `.agents/skills/triage/SKILL.md`, делает разбор (одна категория
   `bug`/`enhancement`, один state, redundancy-проверка по коду) и оставляет **один комментарий**
   с рекомендацией и, при необходимости, уточняющими вопросами. Метки он не применяет — их ставит
   мейнтейнер по рекомендации.
+
+### Авторевью pull request (`opencode-review.yml`)
+
+Воркфлоу `.github/workflows/opencode-review.yml` автоматически ревьюит каждый PR по критериям из
+`REVIEW.md`.
+
+- **Событие:** `pull_request` типов `opened`, `synchronize`, `reopened`, `ready_for_review`;
+  черновики пропускаются.
+- **Критерии:** `REVIEW.md` в корне — что проверять (корректность, тесты, контракт, конвенции,
+  безопасность, scope, читаемость) и как расставлять уровни Blocker / Should-fix / Nit.
+- **Права:** `contents: read`, `issues: write`, `pull-requests: write` через `GITHUB_TOKEN`,
+  намеренно **без** `id-token: write`: на `pull_request` джоба исполняет код из head-ревизии PR, а
+  ограниченный токен не позволяет обменять OIDC на токен приложения `opencode-agent`.
+- **Ограничения:** `agent: plan` — агент не редактирует код, не одобряет и не мержит PR;
+  `timeout-minutes: 20`. PR из форков пропускаются: GitHub не передаёт таким прогонам секреты,
+  и ревью упало бы вместо комментария. На `pull_request` воркфлоу и локальный composite action
+  берутся из head-ревизии PR — это осознанная граница доверия: ветки заводят только участники с
+  правом записи, форки отсечены, а контент PR трактуется как данные (защита от prompt-injection),
+  не как инструкции.
+- **Устаревшее ревью отменяется:** `concurrency` по номеру PR с `cancel-in-progress: true` —
+  новый push отменяет прогон по старой ревизии.
+- **Результат:** один комментарий к PR с находками по файлам и итогом по уровням.
+
+**Шаблон PR** — `.github/PULL_REQUEST_TEMPLATE.md`: разделы «Что и зачем», «Тип изменения»,
+«Проверки», «Риск», «Откат».
+
+**Общая подготовка.** Шаги, общие для всех трёх воркфлоу (`opencode.yml`,
+`opencode-triage.yml`, `opencode-review.yml`), вынесены в composite action
+`.github/actions/opencode-setup`: пустой `render-api-key` для проектного конфига, объявление
+провайдера provod.ai в глобальном конфиге и восстановление скилов из `skills-lock.json`.
 
 ## Релизы
 
