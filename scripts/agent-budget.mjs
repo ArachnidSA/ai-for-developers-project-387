@@ -6,7 +6,7 @@
 export const BUDGET_LIMIT = 3
 
 /** Таймаут шага вызова модели в секундах. Должен совпадать с timeout-minutes шага. */
-export const AGENT_TIMEOUT_SECONDS = 1500
+export const AGENT_TIMEOUT_SECONDS = 600
 
 /**
  * Сколько попыток агента уже израсходовано по прогонам с меткой `tag`.

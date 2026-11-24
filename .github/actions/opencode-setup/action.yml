@@ -43,6 +43,9 @@ runs:
                 }
               }
             }
+          },
+          "permission": {
+            "external_directory": "allow"
           }
         }
         JSON

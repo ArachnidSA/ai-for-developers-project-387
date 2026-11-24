@@ -65,7 +65,7 @@ run = "npm run test"
 
 [tasks."test:scripts"]
 description = "Юнит-тесты вспомогательных Node-скриптов"
-run = "node --test scripts/agent-budget.test.mjs"
+run = "node --test scripts/agent-budget.test.mjs scripts/opencode-config.test.mjs"
 
 [tasks.test]
 description = "Дымовые тесты бэкенда, фронтенда и Node-скриптов"
