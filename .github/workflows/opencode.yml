@@ -28,7 +28,7 @@ jobs:
       contents: read
       actions: read
       issues: write
-      pull-requests: read
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -62,12 +62,14 @@ jobs:
               (context.payload.pull_request && context.payload.pull_request.number) || ''
             )
             const tag = `oc #${number}`
-            // Один пагинированный вызов по воркфлоу; нужные прогоны отбирает usedAttempts по метке.
-            const runs = await github.paginate(
+            // Один обход по воркфлоу; нужные прогоны отбирает usedAttempts по метке.
+            const runs = []
+            for await (const response of github.paginate.iterator(
               github.rest.actions.listWorkflowRuns,
-              { ...context.repo, workflow_id: 'opencode.yml', per_page: 100 },
-              (response) => response.data.workflow_runs
-            )
+              { ...context.repo, workflow_id: 'opencode.yml', per_page: 100 }
+            )) {
+              runs.push(...(response.data.workflow_runs ?? []))
+            }
             const used = usedAttempts(runs, tag, context.runId)
             const allowed = used < BUDGET_LIMIT
             core.info(`agent budget: tag=${tag} used=${used} limit=${BUDGET_LIMIT} allowed=${allowed}`)
