@@ -141,7 +141,32 @@ OpenCode видит скилы из `.agents/skills/` автоматически
 (браузерный сценарий). Перед проверками CI ставит браузер:
 `npx playwright install --with-deps chromium`.
 `.github/workflows/hexlet-check.yml` — проверки курса Hexlet (не редактируется).
-`.github/workflows/opencode.yml` — запуск агента OpenCode по комментарию `/oc` в issue/PR.
+`.github/workflows/opencode.yml` — запуск агента OpenCode по упоминанию в комментарии; см.
+[ниже](#агент-opencode-по-комментарию-opencodeyml).
+
+### Агент OpenCode по комментарию (`opencode.yml`)
+
+Воркфлоу `.github/workflows/opencode.yml` запускает агента OpenCode прямо в раннере GitHub
+Actions — без локального запуска и без отдельного токена.
+
+- **Событие:** `issue_comment` и `pull_request_review_comment` типа `created` — любой новый
+  комментарий к issue/PR или к строке кода в PR (вкладка *Files*).
+- **Слова-триггеры (mentions):** `/oc` и `/opencode`, регистронезависимо. Заданы явно: в
+  `with.mentions` воркфлоу и в условии `if` джобы. Ран стартует, только если комментарий
+  содержит одно из них.
+- **Модель:** `provod/deepseek-v4.1-flash` через провайдера provod.ai; ключ — из секрета
+  репозитория `PROVOD_API_KEY`.
+- **Назначение:** по упоминанию агент читает контекст (тело issue/PR, при комментарии к строке —
+  файл, строки и дифф) и выполняет просьбу: объясняет, отвечает, вносит правку или делает
+  ревью.
+- **Результаты:** ответный комментарий агента (`opencode-agent[bot]`) в issue/PR; если агент
+  менял файлы — новая ветка и pull request с изменениями; ход и логи видны в Actions.
+
+Доступ выдаёт установленное OpenCode-приложение (`github.com/apps/opencode-agent`): воркфлоу
+обменивает OIDC-токен (`id-token: write`) на токен установки приложения, поэтому отдельные
+`GITHUB_TOKEN`-права или PAT не нужны. Ран запускают только авторы с ролью
+`OWNER`/`MEMBER`/`COLLABORATOR`; у джобы есть `timeout-minutes: 30` и `concurrency` по номеру
+issue/PR. Примеры: `/oc объясни этот issue`, `/opencode добавь тесты`.
 
 ## Релизы
 

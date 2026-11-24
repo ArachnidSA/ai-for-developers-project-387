@@ -51,11 +51,16 @@
   (`ci.yml`); гоняй её для всей изменённой работы перед выкладкой (нужны свободные порты
   8000/5173 — E2E поднимает серверы сам).
 - Отдельные задачи: `mise run lint`, `mise run typecheck`, `mise run test`, `mise run contract`,
-  `mise run e2e` (у первых трёх есть подзадача `:backend` / `:frontend`).
+  `mise run e2e` (у первых трёх есть подзадача `:backend` / `:frontend`), `mise run gen`
+  (кодогенерация контракта), `mise run docker:build` и `mise run docker:smoke` (сборка образа и
+  smoke-сценарий в контейнере). Полный список задач с описаниями — в `mise.toml`, сводная
+  таблица — в README (раздел «Задачи»).
 - `mise run contract` **нельзя** класть в pre-commit: он считает дрейф через `git status`
   и ложно падает при застейдженных изменениях (например, во время коммита). Поэтому pre-commit
   гоняет лёгкую `mise run check:fast` без `contract` и `e2e`.
 - Дев-серверы как демоны: `mise dev`, затем `mise daemons status` (бэкенд :8000, фронт :5173).
+- Агент в GitHub: в комментариях к issue/PR работают упоминания `/oc` и `/opencode` — их
+  обрабатывает `.github/workflows/opencode.yml` (см. README, раздел «CI»).
 
 Одиночный тест (запускается из каталога приложения, а не через mise):
 ```sh
