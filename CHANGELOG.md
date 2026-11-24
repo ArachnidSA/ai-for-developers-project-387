@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.0...v0.2.1) (2026-11-23)
+
+
+### Miscellaneous Chores
+
+* **backend:** переименовать пакет и приложение на 387 ([47de505](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/47de5053c35ebd6daff7d8232f31267bda616758))
+
 ## [0.2.0](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.1.0...v0.2.0) (2026-11-23)
 
 
