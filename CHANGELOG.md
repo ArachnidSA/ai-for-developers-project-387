@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.2...v0.2.3) (2026-11-24)
+
+
+### Documentation
+
+* уточнить условие авто-деплоя Render ([d9f370c](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/d9f370c5d1d113d110e5047055154fd8761bdd24))
+
 ## [0.2.2](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.1...v0.2.2) (2026-11-24)
 
 
