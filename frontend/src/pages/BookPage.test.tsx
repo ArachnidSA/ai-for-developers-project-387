@@ -55,6 +55,13 @@ const CREATED_BOOKING: Booking = {
   end: MORNING_SLOT.end,
 }
 
+const fullDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
 /** День окна как `YYYY-MM-DD` по дате владельца (окно строится в его поясе). */
 function ownerIso(offsetDays = 0): string {
   return addDays(dayInTimeZone(new Date()), offsetDays)
@@ -166,6 +173,30 @@ describe('экран записи гостя', () => {
       }),
     )
     expect(await screen.findByText('Запись оформлена')).toBeTruthy()
+
+    const confirmation = screen.getByText(/Мы ждём вас/)
+    expect(confirmation.textContent).toContain(
+      fullDateFormatter.format(new Date(CREATED_BOOKING.start)),
+    )
+    expect(confirmation.textContent).toContain(MEETING.name)
+  })
+
+  it('не показывает тип события, если его нет в загруженном списке типов', async () => {
+    listEventTypesMock.mockResolvedValue([MEETING])
+    listEventTypeSlotsMock.mockResolvedValue([MORNING_SLOT])
+    createBookingMock.mockResolvedValue({ ...CREATED_BOOKING, event_type_id: 999 })
+
+    renderBookPage()
+    await screen.findByText('Встреча 60 минут')
+    fireEvent.click(screen.getByRole('button', { name: /Встреча 60 минут/ }))
+    selectDay(0)
+    fireEvent.click(await screen.findByTestId('slot'))
+
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Анна' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    const confirmation = await screen.findByText(/Мы ждём вас/)
+    expect(confirmation.textContent).not.toContain('Тип события')
   })
 
   it('отправляет только имя, когда email и заметка пустые', async () => {
