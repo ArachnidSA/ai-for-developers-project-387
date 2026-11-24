@@ -26,3 +26,60 @@ jobs:
       # кодогенерации) + e2e (браузерный сценарий на настоящих серверах).
       - name: Run checks
         run: mise run check
+
+  # Проверка версии автора PR: запускаем приложение из ТОЧНОГО head SHA, а не из
+  # временного merge-коммита, который `checkout` берёт на pull_request по умолчанию.
+  # Задание без секретов — модель здесь не вызывается.
+  e2e-verify:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Record checked revision
+        run: |
+          set -eu
+          sha=$(git rev-parse HEAD)
+          {
+            echo "head_sha=${{ github.event.pull_request.head.sha }}"
+            echo "rev_parse_head=$sha"
+          } | tee verify-sha.txt
+          test "$sha" = "${{ github.event.pull_request.head.sha }}"
+
+      - name: Set up mise
+        uses: jdx/mise-action@v5
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # trace включаем явно (в конфиге по умолчанию он пишется только на retry),
+      # чтобы успешный прогон тоже оставил свидетельство.
+      - name: Run E2E with trace
+        env:
+          PW_TRACE: 'on'
+        run: mise run e2e
+
+      - name: Append result
+        if: always()
+        run: printf 'result=%s\n' "${{ job.status }}" >> verify-sha.txt
+
+      # Артефакт с SHA, результатом и trace — свидетельство проверенной версии.
+      # Имя по SHA: после нового push старый артефакт остаётся доказательством прежней версии.
+      - name: Upload verification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-verify-${{ github.event.pull_request.head.sha }}
+          path: |
+            verify-sha.txt
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 14

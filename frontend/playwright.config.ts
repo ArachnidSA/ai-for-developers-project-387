@@ -20,7 +20,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:5173',
-    trace: 'on-first-retry',
+    // trace по умолчанию пишется только на retry; PW_TRACE=on включает его всегда —
+    // так CI-задание проверки версии оставляет trace и для успешного прогона.
+    trace: process.env.PW_TRACE === 'on' ? 'on' : 'on-first-retry',
   },
   projects: [
     {
