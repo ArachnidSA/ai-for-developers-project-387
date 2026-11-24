@@ -62,13 +62,19 @@ jobs:
               (context.payload.pull_request && context.payload.pull_request.number) || ''
             )
             const tag = `oc #${number}`
-            // Один обход по воркфлоу; нужные прогоны отбирает usedAttempts по метке.
+            // Явная постраничная выборка истории (paginate.iterator не отдал прогоны);
+            // нужные отбирает usedAttempts по метке.
             const runs = []
-            for await (const response of github.paginate.iterator(
-              github.rest.actions.listWorkflowRuns,
-              { ...context.repo, workflow_id: 'opencode.yml', per_page: 100 }
-            )) {
-              runs.push(...(response.data.workflow_runs ?? []))
+            for (let page = 1; page <= 10; page += 1) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                ...context.repo,
+                workflow_id: 'opencode.yml',
+                per_page: 100,
+                page,
+              })
+              const pageRuns = data.workflow_runs ?? []
+              runs.push(...pageRuns)
+              if (pageRuns.length < 100) break
             }
             const used = usedAttempts(runs, tag, context.runId)
             const allowed = used < BUDGET_LIMIT
