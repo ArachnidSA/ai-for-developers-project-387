@@ -44,9 +44,9 @@ runs:
               }
             }
           },
-          "permissions": [
-            { "action": "external_directory", "resource": "*", "effect": "allow" }
-          ]
+          "permission": {
+            "external_directory": "allow"
+          }
         }
         JSON
 
