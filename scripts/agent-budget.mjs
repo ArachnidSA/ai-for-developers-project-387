@@ -16,7 +16,7 @@ export const AGENT_TIMEOUT_SECONDS = 600
 export function usedAttempts(runs, tag, runId = null) {
   let used = 0
   for (const run of runs) {
-    if (run.display_title !== tag) continue
+    if (!run || run.display_title !== tag) continue
     const attempts = run.run_attempt || 1
     used += run.id === runId ? attempts - 1 : attempts
   }

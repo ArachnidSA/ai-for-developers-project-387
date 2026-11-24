@@ -21,6 +21,11 @@ test('usedAttempts: Re-run текущего прогона расходует п
   assert.equal(usedAttempts(runs, 'oc #27', 2), 1)
 })
 
+test('usedAttempts: пропускает пустые элементы списка прогонов', () => {
+  const runs = [undefined, { id: 1, display_title: 'oc #27', run_attempt: 1 }]
+  assert.equal(usedAttempts(runs, 'oc #27'), 1)
+})
+
 test('classifyReason: успех — отчёт не нужен', () => {
   const base = {
     budgetOutcome: 'success',
