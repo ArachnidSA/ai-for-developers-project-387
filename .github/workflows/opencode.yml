@@ -36,9 +36,37 @@ jobs:
       - name: Provide empty render-api-key for the project config
         run: touch render-api-key
 
+      # Провайдер provod.ai объявляем только для CI: .opencode/ переопределяет корневой
+      # opencode.json, поэтому локальная конфигурация разработчика не затронута.
+      - name: Configure provod.ai provider for the run
+        run: |
+          mkdir -p .opencode
+          cat > .opencode/opencode.json <<'JSON'
+          {
+            "$schema": "https://opencode.ai/config.json",
+            "providers": {
+              "provod": {
+                "name": "provod.ai",
+                "package": "@opencode/ai/providers/openai-compatible",
+                "env": ["PROVOD_API_KEY"],
+                "settings": { "baseURL": "https://api.provod.ai/v1" },
+                "models": {
+                  "deepseek-v4.1-flash": {
+                    "name": "DeepSeek V4.1 Flash",
+                    "capabilities": { "tools": true, "input": ["text", "image"], "output": ["text"] },
+                    "limit": { "context": 1048576, "output": 943718 }
+                  }
+                }
+              }
+            }
+          }
+          JSON
+
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
         env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          # PROVOD_API_KEY — штатное имя секрета. Пока он не заведён, берём существующий
+          # DEEPSEEK_API_KEY: судя по ошибке api.deepseek.com, в нём лежит ключ provod.ai.
+          PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY || secrets.DEEPSEEK_API_KEY }}
         with:
-          model: deepseek/deepseek-flash
+          model: provod/deepseek-v4.1-flash
