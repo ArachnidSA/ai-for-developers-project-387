@@ -72,8 +72,6 @@ jobs:
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
         env:
-          # PROVOD_API_KEY — штатное имя секрета. Пока он не заведён, берём существующий
-          # DEEPSEEK_API_KEY: судя по ошибке api.deepseek.com, в нём лежит ключ provod.ai.
-          PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY || secrets.DEEPSEEK_API_KEY }}
+          PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY }}
         with:
           model: provod/deepseek-v4.1-flash
