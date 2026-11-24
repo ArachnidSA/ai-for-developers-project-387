@@ -1,0 +1,91 @@
+name: opencode-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Отменяем устаревшее ревью: новый push в тот же PR делает прошлый прогон ненужным
+concurrency:
+  group: opencode-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Черновики не ревьюим
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Полная история нужна, чтобы вычислить merge-base и дифф относительно базовой ветки
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Проектный opencode.json ссылается на {file:./render-api-key}; в CI файла нет, а его
+      # отсутствие фатально для конфига. Пустой файл (он в .gitignore) это чинит.
+      - name: Provide empty render-api-key for the project config
+        run: touch render-api-key
+
+      # Провайдер provod.ai объявляем в глобальном конфиге OpenCode (~/.config/opencode),
+      # а не в репозитории: рабочий каталог остаётся чистым.
+      - name: Configure provod.ai provider for the run
+        run: |
+          mkdir -p "$HOME/.config/opencode"
+          cat > "$HOME/.config/opencode/opencode.json" <<'JSON'
+          {
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {
+              "provod": {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "provod.ai",
+                "options": {
+                  "baseURL": "https://api.provod.ai/v1",
+                  "apiKey": "{env:PROVOD_API_KEY}"
+                },
+                "models": {
+                  "deepseek-v4.1-flash": {
+                    "name": "DeepSeek V4.1 Flash",
+                    "limit": { "context": 1048576, "output": 943718 },
+                    "reasoning": true,
+                    "temperature": true,
+                    "tool_call": true,
+                    "attachment": true,
+                    "modalities": { "input": ["text", "image"], "output": ["text"] }
+                  }
+                }
+              }
+            }
+          }
+          JSON
+
+      # Скилы не коммитятся (.agents/ в .gitignore); восстанавливаем их из skills-lock.json
+      - name: Restore agent skills from lockfile
+        run: npx -y skills@latest install
+
+      - name: Run OpenCode review
+        uses: anomalyco/opencode/github@latest
+        env:
+          PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY }}
+        with:
+          model: provod/deepseek-v4.1-flash
+          # plan-агент не правит код — авторевью только анализирует и отвечает комментарием
+          agent: plan
+          prompt: |
+            Сделай независимое ревью этого pull request.
+            КРИТЕРИИ — в файле REVIEW.md: прочитай его и проверь дифф PR относительно базовой ветки
+            строго по этим критериям и уровням (Blocker / Should-fix / Nit).
+            Дополнительно сверься с docs/adr/ и GLOSSARY.md.
+            Отдельно проверь: нет ли дрейфа сгенерированных артефактов контракта, покрыт ли дифф
+            тестами, нет ли секретов в коде и бандле.
+
+            Результат — ровно один комментарий к PR: находки по файлам с уровнями, затем короткий
+            итог (сколько Blocker / Should-fix / Nit). Первая строка комментария —
+            «> *Авторевью (opencode-review).*».
+
+            Жёсткие ограничения: НЕ меняй код и файлы, НЕ создавай ветки и pull request,
+            НЕ одобряй и НЕ мержи PR. Только анализ и один комментарий.
