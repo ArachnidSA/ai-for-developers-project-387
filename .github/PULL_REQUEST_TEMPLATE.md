@@ -4,7 +4,14 @@
 
 ## Тип изменения
 
-- [ ] feat / fix / refactor / docs / test / chore / ci / build
+- [ ] feat
+- [ ] fix
+- [ ] refactor
+- [ ] docs
+- [ ] test
+- [ ] chore
+- [ ] ci
+- [ ] build
 - [ ] Ломающее изменение (напишите `BREAKING CHANGE:` в теле коммита)
 
 ## Проверки
