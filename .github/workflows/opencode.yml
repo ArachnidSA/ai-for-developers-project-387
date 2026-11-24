@@ -30,31 +30,33 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # opencode.json ссылается на {file:./render-api-key}, а в CI этого файла нет
-      # (он в .gitignore), и отсутствующий файл — фатальная ошибка конфига.
-      # Пустой файл даёт MCP-серверу render пустой ключ: он просто не подключится.
-      - name: Provide empty render-api-key for the project config
-        run: touch render-api-key
-
-      # Провайдер provod.ai объявляем только для CI: .opencode/ переопределяет корневой
-      # opencode.json, поэтому локальная конфигурация разработчика не затронута.
+      # Для раннера подменяем корневой opencode.json на конфиг с провайдером provod.ai.
+      # Формат provider/npm/options — тот же, что в рабочем глобальном конфиге разработчика
+      # (V2 сохраняет совместимость с этими полями). Так мы и заводим провайдера в CI,
+      # и не тянем MCP-сервер render с его {file:./render-api-key}, которого в CI нет.
+      # Файл меняется только в воркспейсе раннера, в репозиторий не коммитится.
       - name: Configure provod.ai provider for the run
         run: |
-          mkdir -p .opencode
-          cat > .opencode/opencode.json <<'JSON'
+          cat > opencode.json <<'JSON'
           {
             "$schema": "https://opencode.ai/config.json",
-            "providers": {
+            "provider": {
               "provod": {
+                "npm": "@ai-sdk/openai-compatible",
                 "name": "provod.ai",
-                "package": "@opencode/ai/providers/openai-compatible",
-                "env": ["PROVOD_API_KEY"],
-                "settings": { "baseURL": "https://api.provod.ai/v1" },
+                "options": {
+                  "baseURL": "https://api.provod.ai/v1",
+                  "apiKey": "{env:PROVOD_API_KEY}"
+                },
                 "models": {
                   "deepseek-v4.1-flash": {
                     "name": "DeepSeek V4.1 Flash",
-                    "capabilities": { "tools": true, "input": ["text", "image"], "output": ["text"] },
-                    "limit": { "context": 1048576, "output": 943718 }
+                    "limit": { "context": 1048576, "output": 943718 },
+                    "reasoning": true,
+                    "temperature": true,
+                    "tool_call": true,
+                    "attachment": true,
+                    "modalities": { "input": ["text", "image"], "output": ["text"] }
                   }
                 }
               }
