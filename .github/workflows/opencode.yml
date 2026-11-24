@@ -75,3 +75,4 @@ jobs:
           PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY }}
         with:
           model: provod/deepseek-v4.1-flash
+          mentions: "/oc,/opencode"
