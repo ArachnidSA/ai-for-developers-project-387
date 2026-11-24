@@ -17,6 +17,13 @@ const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
   minute: '2-digit',
 })
 
+const fullDayFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'short',
+  weekday: 'short',
+  year: 'numeric',
+})
+
 function formatDay(iso: string): string {
   const [year, month, date] = iso.split('-').map(Number)
   return dayLabelFormatter.format(new Date(year, month - 1, date))
@@ -27,6 +34,11 @@ function formatTimeRange(slot: Slot): string {
   const start = timeFormatter.format(new Date(slot.start))
   const end = timeFormatter.format(new Date(slot.end))
   return `${start}–${end}`
+}
+
+/** Полная дата встречи в локальном поясе гостя: «пн, 24 нояб. 2026 г.». */
+function formatFullDay(iso: string): string {
+  return fullDayFormatter.format(new Date(iso))
 }
 
 function BookPage() {
@@ -123,12 +135,15 @@ function BookPage() {
   }
 
   if (created !== null) {
+    const eventTypeName = eventTypes.find((type) => type.id === created.event_type_id)?.name
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 p-8">
         <h1 className="text-3xl font-bold tracking-tight">Запись оформлена</h1>
         <p>
-          Мы ждём вас {formatTimeRange(created)}. Имя: {created.guest_name}
+          Мы ждём вас {formatFullDay(created.start)}, {formatTimeRange(created)}.
         </p>
+        <p>Тип события: {eventTypeName}</p>
+        <p>Имя: {created.guest_name}</p>
         <div className="flex items-center gap-4">
           <button
             className="rounded-md border px-3 py-1 text-sm"

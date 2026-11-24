@@ -60,6 +60,28 @@ function ownerIso(offsetDays = 0): string {
   return addDays(dayInTimeZone(new Date()), offsetDays)
 }
 
+// Подтверждение BookPage показывает дату и время в локальном поясе гостя (ADR-0002).
+// Форматируем тем же способом, чтобы тест не зависел от пояса машины.
+const fullDayFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'short',
+  weekday: 'short',
+  year: 'numeric',
+})
+
+const clockFormatter = new Intl.DateTimeFormat('ru-RU', {
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** Строка «Мы ждём вас …» из подтверждения для записи `booking`. */
+function confirmationLine(booking: Booking): string {
+  const day = fullDayFormatter.format(new Date(booking.start))
+  const start = clockFormatter.format(new Date(booking.start))
+  const end = clockFormatter.format(new Date(booking.end))
+  return `Мы ждём вас ${day}, ${start}–${end}.`
+}
+
 function renderBookPage() {
   return render(
     <MemoryRouter>
@@ -166,6 +188,10 @@ describe('экран записи гостя', () => {
       }),
     )
     expect(await screen.findByText('Запись оформлена')).toBeTruthy()
+    // В подтверждении видны полная дата, время и название типа события.
+    expect(screen.getByText(confirmationLine(CREATED_BOOKING))).toBeTruthy()
+    expect(screen.getByText('Тип события: Встреча 60 минут')).toBeTruthy()
+    expect(screen.getByText('Имя: Анна')).toBeTruthy()
   })
 
   it('отправляет только имя, когда email и заметка пустые', async () => {
