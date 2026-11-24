@@ -35,6 +35,11 @@ function formatFullDate(iso: string): string {
   return fullDateFormatter.format(new Date(iso))
 }
 
+/** Длительность в минутах в том же формате, что и в списке типов: «<N> мин». */
+function formatDuration(minutes: number): string {
+  return `${minutes} мин`
+}
+
 /** Время слота в локальном поясе гостя (в API время приходит в UTC). */
 function formatTimeRange(slot: Slot): string {
   const start = timeFormatter.format(new Date(slot.start))
@@ -136,11 +141,17 @@ function BookPage() {
   }
 
   if (created !== null) {
-    // Название типа берём из уже загруженного списка по id записи; контракт его не несёт.
-    const eventTypeName = eventTypes.find(
-      (eventType) => eventType.id === created.event_type_id,
-    )?.name
-    const typeClause = eventTypeName ? ` Тип события: ${eventTypeName}.` : ''
+    // Тип берём из уже загруженного списка по id записи; контракт его не несёт.
+    const eventType = eventTypes.find((candidate) => candidate.id === created.event_type_id)
+    // Длительность — из типа; если типа нет в списке, считаем из start/end записи,
+    // чтобы сведения о встрече не терялись.
+    const durationMinutes =
+      eventType?.duration_minutes ??
+      Math.round((new Date(created.end).getTime() - new Date(created.start).getTime()) / 60_000)
+    const durationText = formatDuration(durationMinutes)
+    const typeClause = eventType
+      ? ` Тип события: ${eventType.name}, ${durationText}.`
+      : ` Длительность: ${durationText}.`
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 p-8">
         <h1 className="text-3xl font-bold tracking-tight">Запись оформлена</h1>
@@ -188,7 +199,7 @@ function BookPage() {
               >
                 <span className="font-medium">{eventType.name}</span>
                 <span className="text-muted-foreground text-sm">{eventType.description}</span>
-                <span className="text-sm">{eventType.duration_minutes} мин</span>
+                <span className="text-sm">{formatDuration(eventType.duration_minutes)}</span>
               </button>
             </li>
           ))}
