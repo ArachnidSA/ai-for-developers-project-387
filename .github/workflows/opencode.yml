@@ -1,5 +1,8 @@
 name: opencode
 
+# Метка прогона несёт номер PR/issue — по ней считается бюджет запусков агента.
+run-name: "oc #${{ github.event.issue.number || github.event.pull_request.number }}"
+
 on:
   issue_comment:
     types: [created]
@@ -19,10 +22,13 @@ jobs:
        contains(github.event.comment.body, '/opencode')) &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       id-token: write
       contents: read
+      actions: read
+      issues: write
+      pull-requests: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -30,13 +36,132 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # Бюджет — ДО вызова модели. Считаем попытки по истории Actions (метка прогона "oc #N"),
+      # поэтому отмена, таймаут и Re-run тоже расходуют попытку. Комментарии бюджет не меняют:
+      # это только отчёт. Чистая логика — в scripts/agent-budget.mjs (покрыта тестами).
+      - name: Check agent budget
+        id: budget
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url')
+            const { BUDGET_LIMIT, usedAttempts } = await import(
+              pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/agent-budget.mjs`).href
+            )
+            const isPR =
+              context.eventName === 'pull_request_review_comment' ||
+              (context.payload.issue && context.payload.issue.pull_request != null)
+            // Бюджет на PR; для обычных issue не ограничиваем.
+            if (!isPR) {
+              core.setOutput('allowed', 'true')
+              core.setOutput('used', '0')
+              return
+            }
+            const number = String(
+              (context.payload.issue && context.payload.issue.number) ||
+              (context.payload.pull_request && context.payload.pull_request.number) || ''
+            )
+            const tag = `oc #${number}`
+            // Один пагинированный вызов по воркфлоу; нужные прогоны отбирает usedAttempts по метке.
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              { ...context.repo, workflow_id: 'opencode.yml', per_page: 100 },
+              (response) => response.data.workflow_runs
+            )
+            const used = usedAttempts(runs, tag, context.runId)
+            const allowed = used < BUDGET_LIMIT
+            core.info(`agent budget: tag=${tag} used=${used} limit=${BUDGET_LIMIT} allowed=${allowed}`)
+            core.setOutput('used', String(used))
+            core.setOutput('allowed', allowed ? 'true' : 'false')
+
       - name: OpenCode setup
+        id: setup
+        if: steps.budget.outputs.allowed == 'true'
         uses: ./.github/actions/opencode-setup
 
+      # Маркер времени старта (в RUNNER_TEMP, вне рабочего дерева) нужен, чтобы отличить
+      # таймаут вызова от прочей ошибки агента: таймаут шага и падение дают один outcome.
+      - name: Mark agent running
+        if: steps.budget.outputs.allowed == 'true'
+        run: date +%s > "$RUNNER_TEMP/agent-start"
+
       - name: Run OpenCode
+        id: model
+        if: steps.budget.outputs.allowed == 'true'
+        timeout-minutes: 25
         uses: anomalyco/opencode/github@latest
         env:
           PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY }}
         with:
           model: provod/deepseek-v4.1-flash
           mentions: "/oc,/opencode"
+
+      - name: Mark agent done
+        if: success() && steps.budget.outputs.allowed == 'true'
+        run: touch "$RUNNER_TEMP/agent-done"
+
+      # Отчёт без модели: причина, последний SHA, ссылка на логи, статус «нужен человек».
+      # Дальше решает человек; автоматического цикла исправлений нет.
+      - name: Report outcome
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          BUDGET_OUTCOME: ${{ steps.budget.outcome }}
+          ALLOWED: ${{ steps.budget.outputs.allowed }}
+          SETUP_OUTCOME: ${{ steps.setup.outcome }}
+          MODEL_OUTCOME: ${{ steps.model.outcome }}
+        with:
+          script: |
+            const fs = require('node:fs')
+            const path = require('node:path')
+            const { pathToFileURL } = require('node:url')
+            const { AGENT_TIMEOUT_SECONDS, classifyReason } = await import(
+              pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/agent-budget.mjs`).href
+            )
+            const tmp = process.env.RUNNER_TEMP
+            const done = fs.existsSync(path.join(tmp, 'agent-done'))
+            let elapsed = 0
+            try {
+              elapsed = Math.floor(Date.now() / 1000) - Number(fs.readFileSync(path.join(tmp, 'agent-start'), 'utf8').trim())
+            } catch {}
+
+            const reason = classifyReason({
+              budgetOutcome: process.env.BUDGET_OUTCOME,
+              allowed: process.env.ALLOWED === 'true',
+              setupOutcome: process.env.SETUP_OUTCOME,
+              modelOutcome: process.env.MODEL_OUTCOME,
+              done,
+              elapsed,
+              timeout: AGENT_TIMEOUT_SECONDS,
+            })
+            if (!reason) return
+
+            const isPR =
+              context.eventName === 'pull_request_review_comment' ||
+              (context.payload.issue && context.payload.issue.pull_request != null)
+            const number = (context.payload.issue && context.payload.issue.number) ||
+                           (context.payload.pull_request && context.payload.pull_request.number)
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+
+            let sha = '(не PR)'
+            if (isPR) {
+              const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number })
+              sha = pr.head.sha
+            }
+
+            const title = {
+              limit_exhausted: 'Предел запусков агента в этом PR исчерпан',
+              timeout: 'Вызов агента остановлен по таймауту',
+              infra: 'Сбой подготовки инструмента или отсутствует ключ',
+              agent_failed: 'Сбой агента',
+            }[reason]
+
+            const body = [
+              `### ${title}`,
+              '',
+              `- Причина: \`${reason}\``,
+              `- Последний SHA: \`${sha}\``,
+              `- Логи: ${url}`,
+              '- Статус: **нужен человек** — следующий шаг выбирает человек, автоматического цикла исправлений нет.',
+            ].join('\n')
+            await github.rest.issues.createComment({ ...context.repo, issue_number: number, body })
