@@ -25,6 +25,27 @@ cd ai-for-developers-project-387
 
 <!-- Добавьте примеры запуска и запись asciinema — именно это смотрит работодатель -->
 
+## Деплой (Render)
+
+Публичный адрес: **https://ai-for-developers-project-387-lnqe.onrender.com**
+
+Сервис собирается из корневого [`Dockerfile`](Dockerfile): стадия на Node собирает SPA, затем
+python-стадия ставит зависимости и отдаёт статику вместе с API (`/api`) одним процессом FastAPI.
+Приложение слушает `0.0.0.0` и порт из переменной `PORT` (Render подставляет свой).
+
+- **Сервис:** Render Web Service, Environment Docker, план Free, регион Frankfurt,
+  health check `/api/healthcheck`, автодеплой по push в `main`.
+- **Конфигурация:** справочно — [`render.yaml`](render.yaml). Живой сервис создан через
+  MCP-инструмент Render (`create_web_service`) и `render.yaml` не читает; см.
+  [`docs/mcp-render.md`](docs/mcp-render.md).
+
+### Хранение
+
+База — SQLite-файл **внутри контейнера**. Данные переживают перезапуск процесса, но **не**
+пересоздание контейнера (редеплой, смена образа, перенос инстанса): после деплоя без внешнего
+тома данные сбрасываются. Решение зафиксировано в
+[`docs/adr/0006-ephemeral-storage-on-hosting.md`](docs/adr/0006-ephemeral-storage-on-hosting.md).
+
 ---
 
 <details>
