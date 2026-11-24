@@ -30,6 +30,12 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # opencode.json ссылается на {file:./render-api-key}, а в CI этого файла нет
+      # (он в .gitignore), и отсутствующий файл — фатальная ошибка конфига.
+      # Пустой файл даёт MCP-серверу render пустой ключ: он просто не подключится.
+      - name: Provide empty render-api-key for the project config
+        run: touch render-api-key
+
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
         env:
