@@ -30,14 +30,19 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # Для раннера подменяем корневой opencode.json на конфиг с провайдером provod.ai.
-      # Формат provider/npm/options — тот же, что в рабочем глобальном конфиге разработчика
-      # (V2 сохраняет совместимость с этими полями). Так мы и заводим провайдера в CI,
-      # и не тянем MCP-сервер render с его {file:./render-api-key}, которого в CI нет.
-      # Файл меняется только в воркспейсе раннера, в репозиторий не коммитится.
+      # Проектный opencode.json ссылается на {file:./render-api-key}; в CI файла нет, а его
+      # отсутствие фатально для конфига. Пустой файл (он в .gitignore) это чинит и не пачкает
+      # рабочее дерево — иначе действие открыло бы лишний PR.
+      - name: Provide empty render-api-key for the project config
+        run: touch render-api-key
+
+      # Провайдер provod.ai объявляем в глобальном конфиге OpenCode (~/.config/opencode),
+      # а не в репозитории: рабочий каталог остаётся чистым. Формат provider/npm/options —
+      # тот же, что в рабочем конфиге разработчика.
       - name: Configure provod.ai provider for the run
         run: |
-          cat > opencode.json <<'JSON'
+          mkdir -p "$HOME/.config/opencode"
+          cat > "$HOME/.config/opencode/opencode.json" <<'JSON'
           {
             "$schema": "https://opencode.ai/config.json",
             "provider": {
