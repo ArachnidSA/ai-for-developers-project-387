@@ -6,10 +6,11 @@ version: "1"
 # сервиса и совместим с Render Blueprint, если его когда-нибудь подключат как Blueprint.
 services:
   - type: web
-    name: ai-for-dev-386
+    name: ai-for-developers-project-387
     runtime: docker
     region: frankfurt
     plan: free
+    branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/healthcheck
@@ -20,4 +21,4 @@ services:
     # envVars:
     #   - key: EXAMPLE_SECRET
     #     sync: false
-    repo: https://github.com/ArachnidSA/ai-for-developers-project-386
+    repo: https://github.com/ArachnidSA/ai-for-developers-project-387
