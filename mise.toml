@@ -63,9 +63,13 @@ run = "uv run pytest"
 dir = "frontend"
 run = "npm run test"
 
+[tasks."test:scripts"]
+description = "Юнит-тесты вспомогательных Node-скриптов"
+run = "node --test scripts/agent-budget.test.mjs"
+
 [tasks.test]
-description = "Дымовые тесты бэкенда и фронтенда"
-depends = ["test:backend", "test:frontend"]
+description = "Дымовые тесты бэкенда, фронтенда и Node-скриптов"
+depends = ["test:backend", "test:frontend", "test:scripts"]
 
 [tasks.e2e]
 description = "Браузерный E2E-сценарий гостя на настоящих серверах (Playwright)"

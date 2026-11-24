@@ -136,12 +136,12 @@ OpenCode видит скилы из `.agents/skills/` автоматически
 
 ## CI
 
-`.github/workflows/ci.yml` на каждый push запускает `mise run check` — тот же полный набор, что и
-локально: `check:fast` (lint, typecheck, test), `contract` (дрейф кодогенерации) и `e2e`
+`.github/workflows/ci.yml` на push в `main` запускает `mise run check` — тот же полный набор, что
+и локально: `check:fast` (lint, typecheck, test), `contract` (дрейф кодогенерации) и `e2e`
 (браузерный сценарий). Перед проверками CI ставит браузер:
 `npx playwright install --with-deps chromium`. В `ci.yml` два задания: на pull request `check`
-гоняет `check:fast` + `contract` (e2e не дублируется), на push — полный `mise run check`;
-`e2e-verify` проверяет версию PR по head SHA с trace-артефактом; см.
+гоняет `check:fast` + `contract`, а `e2e` — отдельное задание `e2e-verify` (по head SHA, с
+trace-артефактом); на push в `main` — полный `mise run check`. См.
 [ниже](#проверка-версии-pr-e2e-verify).
 `.github/workflows/hexlet-check.yml` — проверки курса Hexlet (не редактируется).
 `.github/workflows/opencode.yml` — запуск агента OpenCode по упоминанию в комментарии; см.
@@ -196,6 +196,8 @@ issue лимита нет). Учитываются и общий коммент�
   (таймаут вызова), `infra` (сбой подготовки инструмента или нет ключа), `agent_failed` (прочий
   сбой агента). Неопределённую причину проверяют по логам. Следующее действие выбирает человек —
   автоматического цикла исправлений нет.
+- **Тестируемость:** чистая логика подсчёта и классификации вынесена в `scripts/agent-budget.mjs`
+  и покрыта юнит-тестами (`scripts/agent-budget.test.mjs`, задача `mise run test:scripts`).
 
 ### Автотриаж новых обращений (`opencode-triage.yml`)
 
@@ -263,7 +265,8 @@ issue лимита нет). Учитываются и общий коммент�
 - **Ручной шаг:** человек перед мержем открывает артефакт, сверяет SHA с текущим head PR и смотрит
   trace/скриншот. Авторевью работает по диффу и артефакт не читает.
 - **Merge-результат:** на PR e2e идёт по head-ревизии, поэтому результат слияния проверяется
-  отдельно — полным `mise run check` на push в `main`.
+  отдельно — полным `mise run check` на push в `main`. Если включена защита ветки, добавьте
+  `e2e-verify` в обязательные проверки, иначе падение e2e не заблокирует мерж.
 
 ## Релизы
 
