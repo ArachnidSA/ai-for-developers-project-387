@@ -245,8 +245,13 @@ on:
    «open an issue». Проверять при реализации.
 2. **Имя бота-автора** issue в OIDC-режиме upstream-документацией не названо
    (`opencode-agent[bot]` — наблюдение этого репозитория, не первоисточник).
-3. **Действие `bash` в permissions** не существует (V2): команды — через `shell`,
-   правки файлов — через `edit`. Формулировка «`permission.edit`/`bash`» требует уточнения.
+3. **V1 против V2 в правах.** Установленный в CI CLI — OpenCode **V1** (проверено прогоном:
+   `V2 permissions are not supported by OpenCode V1`). В V1 права задаются ключом `permission`
+   (ед. ч.) и сгруппированы по инструментам: команды — `permission.bash`, правки файлов —
+   `permission.edit`; агенты — под ключом `agent` (ед. ч.). В V2 это `permissions` (массив правил
+   `action`/`resource`/`effect`), действие команд называется `shell`, а агенты — `agents`.
+   Формулировка «`permission.edit`/`bash`» описывает именно **V1**; в V2 ей соответствует
+   `edit`/`shell`.
 4. **Точная patch-версия** `treosh/lighthouse-ci-action` в README не указана (примеры только
    мажором `@v12`); для фиксации версии брать полный тег/commit SHA из релизов.
 5. **Построчный текст** `concurrency`/`timeout-minutes` в этом отчёте не перечитывался (взята
