@@ -13,20 +13,21 @@
       }
     }
   },
-  "agents": {
+  "agent": {
     "audit": {
       "description": "Аудит Lighthouse: читает отчёт и открывает issue только по новой находке",
       "mode": "primary",
-      "permissions": [
-        { "action": "read", "resource": "*", "effect": "allow" },
-        { "action": "glob", "resource": "*", "effect": "allow" },
-        { "action": "grep", "resource": "*", "effect": "allow" },
-        { "action": "edit", "resource": "*", "effect": "deny" },
-        { "action": "edit", "resource": "audit-summary.md", "effect": "allow" },
-        { "action": "shell", "resource": "*", "effect": "deny" },
-        { "action": "shell", "resource": "gh issue *", "effect": "allow" },
-        { "action": "shell", "resource": "gh search *", "effect": "allow" }
-      ]
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "audit-summary.md": "allow"
+        },
+        "bash": {
+          "*": "deny",
+          "gh issue *": "allow",
+          "gh search *": "allow"
+        }
+      }
     }
   }
 }
