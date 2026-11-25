@@ -45,6 +45,7 @@ jobs:
           persist-credentials: false
 
       - name: Check APP_URL
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.report_url == '' }}
         run: |
           if [ -z "${APP_URL}" ]; then
             echo "::error::не задана переменная репозитория APP_URL"
@@ -54,6 +55,7 @@ jobs:
       # Render Free засыпает: будим приложение и дожидаемся ответа healthcheck,
       # иначе первый прогон Lighthouse попадёт на холодный старт.
       - name: Wait for the application
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.report_url == '' }}
         run: |
           url="${APP_URL%/}/api/healthcheck"
           for attempt in $(seq 1 20); do
@@ -133,7 +135,8 @@ jobs:
               summary.performance / summary.accessibility / summary."best-practices" / summary.seo).
 
             Находка — это категория со баллом ниже 0.9 для какого-либо URL. Отпечаток находки —
-            пара (категория, URL).
+            пара (категория, URL). Пустой отчёт или приложение без данных находкой НЕ считаются —
+            просто отметь это в сводке.
 
             Если в audit-context.txt `training=true` — это УЧЕБНЫЙ прогон:
             - НЕ создавай и не меняй issue;
@@ -157,3 +160,19 @@ jobs:
 
             Жёсткие ограничения: доступны только чтение файлов и команды `gh issue` / `gh search`.
             Больше НИКАКИХ файлов и команд не трогай. Отчёты в коммиты не попадают.
+
+      # Разбор агента лежит в audit-summary.md — публикуем его на странице прогона,
+      # иначе вывод агента терялся бы (в коммиты он не попадает).
+      - name: Publish agent summary
+        if: always()
+        run: |
+          {
+            echo
+            echo "### Разбор агента аудита"
+            echo
+            if [ -f audit-summary.md ]; then
+              cat audit-summary.md
+            else
+              echo '_агент не оставил audit-summary.md_'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
