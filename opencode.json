@@ -12,5 +12,22 @@
         }
       }
     }
+  },
+  "agent": {
+    "audit": {
+      "description": "Аудит Lighthouse: читает отчёт и открывает issue только по новой находке",
+      "mode": "primary",
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "audit-summary.md": "allow"
+        },
+        "bash": {
+          "*": "deny",
+          "gh issue *": "allow",
+          "gh search *": "allow"
+        }
+      }
+    }
   }
 }

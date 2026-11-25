@@ -53,3 +53,9 @@ mise.local.lock
 
 # agent tooling
 .agents/
+
+# Артефакты аудита: живут в раннере Actions, в коммиты не попадают
+/.lighthouseci/
+/lighthouse-manifest.json
+/audit-summary.md
+/audit-context.txt

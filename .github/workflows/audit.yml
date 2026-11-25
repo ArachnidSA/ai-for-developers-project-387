@@ -1,0 +1,178 @@
+name: audit
+
+# Метка прогона — по ней аудит легко найти в истории Actions.
+run-name: "аудит #${{ github.run_number }}"
+
+on:
+  # Раз в сутки: 06:00 UTC = 09:00 по Москве.
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      report_url:
+        description: 'Ссылка на заранее снятый отчёт (manifest.json Lighthouse CI). Пусто — снять свежий отчёт.'
+        required: false
+        type: string
+      training:
+        description: 'Учебный прогон: явно пометить задачу и не создавать issue.'
+        required: false
+        type: boolean
+        default: false
+
+# Один аудит за раз: ручной запуск не встаёт вторым рядом со штатным,
+# при этом текущий прогон не отменяется.
+concurrency:
+  group: audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Агент только читает отчёт и работает с issue; прав на запись кода и PR нет (ADR 0007).
+    permissions:
+      contents: read
+      issues: write
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      REPORT_URL: ${{ inputs.report_url || '' }}
+      TRAINING: ${{ inputs.training || 'false' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check APP_URL
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.report_url == '' }}
+        run: |
+          if [ -z "${APP_URL}" ]; then
+            echo "::error::не задана переменная репозитория APP_URL"
+            exit 1
+          fi
+
+      # Render Free засыпает: будим приложение и дожидаемся ответа healthcheck,
+      # иначе первый прогон Lighthouse попадёт на холодный старт.
+      - name: Wait for the application
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.report_url == '' }}
+        run: |
+          url="${APP_URL%/}/api/healthcheck"
+          for attempt in $(seq 1 20); do
+            if curl -fsS --max-time 10 "$url" >/dev/null; then
+              echo "приложение готово (попытка ${attempt})"
+              exit 0
+            fi
+            echo "попытка ${attempt}: ${url} ещё не отвечает, пауза 15 с"
+            sleep 15
+          done
+          echo "::error::приложение не поднялось: ${url}"
+          exit 1
+
+      # Отчёт снимаем сами, если запуск не подсунул готовый (учебный прогон).
+      - name: Run Lighthouse
+        id: lighthouse
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.report_url == '' }}
+        uses: treosh/lighthouse-ci-action@12.6.2
+        with:
+          urls: ${{ env.APP_URL }}/
+          configPath: ./.github/lighthouserc.json
+          uploadArtifacts: true
+
+      - name: Write summary
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.report_url == '' }}
+        env:
+          MANIFEST: ${{ steps.lighthouse.outputs.manifest }}
+        run: |
+          {
+            echo "## Аудит Lighthouse"
+            echo
+            echo "- Адрес: ${APP_URL}/"
+            echo "- Прогон: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "| URL | performance | accessibility | best-practices | seo |"
+            echo "| --- | --- | --- | --- | --- |"
+            echo "${MANIFEST}" | jq -r '.[] | "| \(.url) | \(.summary.performance) | \(.summary.accessibility) | \(.summary["best-practices"]) | \(.summary.seo) |"'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      # Отдаём агенту ровно один отчёт (свежий или подсунутый) и краткий контекст.
+      - name: Prepare report for the agent
+        env:
+          MANIFEST: ${{ steps.lighthouse.outputs.manifest }}
+        run: |
+          if [ -n "${REPORT_URL}" ]; then
+            curl -fsSL "${REPORT_URL}" -o lighthouse-manifest.json
+            echo "использую внешний отчёт: ${REPORT_URL}"
+          else
+            printf '%s' "${MANIFEST}" > lighthouse-manifest.json
+            echo "использую свежий отчёт Lighthouse"
+          fi
+          {
+            echo "training=${TRAINING:-false}"
+            echo "app_url=${APP_URL}"
+            echo "run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } > audit-context.txt
+
+      - name: OpenCode setup
+        uses: ./.github/actions/opencode-setup
+
+      - name: Run OpenCode audit
+        uses: anomalyco/opencode/github@latest
+        env:
+          PROVOD_API_KEY: ${{ secrets.PROVOD_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: provod/deepseek-v4.1-flash
+          agent: audit
+          use_github_token: true
+          prompt: |
+            Ты — агент аудита приложения «Календарь звонков». Твоя задача — по отчёту Lighthouse
+            открыть issue только по НОВОЙ находке.
+
+            Прочитай два файла в корне репозитория:
+            - audit-context.txt — строки training=, app_url=, run_url=;
+            - lighthouse-manifest.json — массив отчётов Lighthouse CI (поля url и
+              summary.performance / summary.accessibility / summary."best-practices" / summary.seo).
+
+            Находка — это категория со баллом ниже 0.9 для какого-либо URL. Отпечаток находки —
+            пара (категория, URL). Пустой отчёт или приложение без данных находкой НЕ считаются —
+            просто отметь это в сводке.
+
+            Если в audit-context.txt `training=true` — это УЧЕБНЫЙ прогон:
+            - НЕ создавай и не меняй issue;
+            - в audit-summary.md явно напиши, что это учебная задача и находок нет.
+
+            Иначе для каждой находки:
+            1. Проверь, нет ли уже открытого issue с тем же отпечатком:
+                 gh issue list --label audit --state open --json number,title
+               Совпадением считай тот же URL и ту же категорию (в заголовке вида
+               `Аудит Lighthouse: <категория> · <путь>`), а не похожую формулировку.
+            2. Если отпечаток уже заведён — НИЧЕГО не создавай (дубликатов быть не должно).
+            3. Если находка новая — открой issue:
+                 gh issue create --label audit --title "Аудит Lighthouse: <категория> · <путь>" \
+                   --body "<тело>"
+               Заголовок строго такого вида (категория латиницей, путь из URL, например `/`).
+               В теле: URL, категория, текущий балл, порог 0.9, ссылка на прогон из run_url и
+               короткая рекомендация.
+
+            В любом случае собери итог в файл audit-summary.md в корне репозитория: что нашёл,
+            какие issue создал или почему не создал.
+
+            Жёсткие ограничения: доступны только чтение файлов и команды `gh issue` / `gh search`.
+            Больше НИКАКИХ файлов и команд не трогай. Отчёты в коммиты не попадают.
+
+      # Разбор агента лежит в audit-summary.md — публикуем его на странице прогона,
+      # иначе вывод агента терялся бы (в коммиты он не попадает).
+      - name: Publish agent summary
+        if: always()
+        run: |
+          {
+            echo
+            echo "### Разбор агента аудита"
+            echo
+            if [ -f audit-summary.md ]; then
+              cat audit-summary.md
+            else
+              echo '_агент не оставил audit-summary.md_'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
