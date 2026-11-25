@@ -17,3 +17,24 @@ test('CI-конфиг OpenCode: external_directory разрешён в V1-син
   assert.equal('permissions' in config, false, 'V2-ключ permissions не поддерживается CI (V1)')
   assert.equal('agents' in config, false, 'V1 использует ключ agent, а не agents')
 })
+
+// Проектный opencode.json читает тот же V1-клиент: агент аудита обязан быть в V1-форме, иначе
+// `opencode github run` падает на загрузке конфига и ломает все агентские воркфлоу (это уже
+// случилось с V2-формой при первом заходе — поймало авторевью, а не `check`).
+test('проектный opencode.json: агент audit задан в V1-синтаксисе', () => {
+  const config = JSON.parse(readFileSync(new URL('../opencode.json', import.meta.url), 'utf8'))
+
+  assert.equal('agents' in config, false, 'V1 использует ключ agent, а не agents')
+  assert.equal('permissions' in config, false, 'V1 использует ключ permission, а не permissions')
+
+  const audit = config.agent?.audit
+  assert.ok(audit, 'в opencode.json должен быть агент audit')
+  assert.equal(audit.mode, 'primary', 'агент аудита — primary (его выбирает with.agent)')
+
+  // Агент не меняет файлы, кроме своей сводки, и не запускает ничего, кроме gh issue / gh search.
+  assert.equal(audit.permission?.edit?.['*'], 'deny')
+  assert.equal(audit.permission?.edit?.['audit-summary.md'], 'allow')
+  assert.equal(audit.permission?.bash?.['*'], 'deny')
+  assert.equal(audit.permission?.bash?.['gh issue *'], 'allow')
+  assert.equal(audit.permission?.bash?.['gh search *'], 'allow')
+})
