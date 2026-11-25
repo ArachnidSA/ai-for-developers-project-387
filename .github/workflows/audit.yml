@@ -1,0 +1,89 @@
+name: audit
+
+# Метка прогона — по ней аудит легко найти в истории Actions.
+run-name: "аудит #${{ github.run_number }}"
+
+on:
+  # Раз в сутки: 06:00 UTC = 09:00 по Москве.
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      report_url:
+        description: 'Ссылка на заранее снятый отчёт (manifest.json Lighthouse CI). Пусто — снять свежий отчёт.'
+        required: false
+        type: string
+      training:
+        description: 'Учебный прогон: явно пометить задачу и не создавать issue.'
+        required: false
+        type: boolean
+        default: false
+
+# Один аудит за раз: ручной запуск не встаёт вторым рядом со штатным,
+# при этом текущий прогон не отменяется.
+concurrency:
+  group: audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Агент только читает отчёт и работает с issue; прав на запись кода и PR нет (ADR 0007).
+    permissions:
+      contents: read
+      issues: write
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check APP_URL
+        run: |
+          if [ -z "${APP_URL}" ]; then
+            echo "::error::не задана переменная репозитория APP_URL"
+            exit 1
+          fi
+
+      # Render Free засыпает: будим приложение и дожидаемся ответа healthcheck,
+      # иначе первый прогон Lighthouse попадёт на холодный старт.
+      - name: Wait for the application
+        run: |
+          url="${APP_URL%/}/api/healthcheck"
+          for attempt in $(seq 1 20); do
+            if curl -fsS --max-time 10 "$url" >/dev/null; then
+              echo "приложение готово (попытка ${attempt})"
+              exit 0
+            fi
+            echo "попытка ${attempt}: ${url} ещё не отвечает, пауза 15 с"
+            sleep 15
+          done
+          echo "::error::приложение не поднялось: ${url}"
+          exit 1
+
+      - name: Run Lighthouse
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@12.6.2
+        with:
+          urls: ${{ env.APP_URL }}/
+          configPath: ./.github/lighthouserc.json
+          uploadArtifacts: true
+
+      - name: Write summary
+        env:
+          MANIFEST: ${{ steps.lighthouse.outputs.manifest }}
+        run: |
+          {
+            echo "## Аудит Lighthouse"
+            echo
+            echo "- Адрес: ${APP_URL}/"
+            echo "- Прогон: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "| URL | performance | accessibility | best-practices | seo |"
+            echo "| --- | --- | --- | --- | --- |"
+            echo "${MANIFEST}" | jq -r '.[] | "| \(.url) | \(.summary.performance) | \(.summary.accessibility) | \(.summary["best-practices"]) | \(.summary.seo) |"'
+          } >> "${GITHUB_STEP_SUMMARY}"
