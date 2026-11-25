@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.6...v0.3.0) (2026-11-25)
+
+
+### Features
+
+* **frontend:** показывать длительность встречи в подтверждении записи ([#30](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/30)) ([950855f](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/950855f6b42001f5df43f4680a3345c6d6897622))
+
+
+### Continuous Integration
+
+* авторевью pull request по критериям REVIEW.md ([#25](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/25)) ([26f5da3](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/26f5da32374d6491d3650dc22ab79e3ce4f0d14b))
+* аудит Lighthouse по расписанию с агентом OpenCode ([#40](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/40)) ([c514a2c](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/c514a2c1343d7c2f3ce3c291991b1f27ea4c2cec))
+* замечания ревью к аудиту и результаты прогонов ([#42](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/42)) ([95a753e](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/95a753eaedad1d74f23b9976ae6c2f23d42a2780))
+* починить подсчёт бюджета и права отчёта для PR ([#34](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/34)) ([7325777](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/7325777c52dc1389416b03d49e4c18cd425e6553))
+* предел запусков агента на PR и проверка версии PR ([#27](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/27)) ([dfa9847](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/dfa9847a59871e1fd96ce8bfae056a6619baa116))
+* убрать зависание /oc на approve и снизить таймаут до 10 минут ([#29](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/29)) ([d0a0eff](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/d0a0effc0a8ff8ac44e968d3a6b123edd005316f))
+* читать историю бюджета постранично ([#35](https://github.com/ArachnidSA/ai-for-developers-project-387/issues/35)) ([ace96bc](https://github.com/ArachnidSA/ai-for-developers-project-387/commit/ace96bc1ef1e97d15534d87d8f7f29a4b0dd7ea7))
+
 ## [0.2.6](https://github.com/ArachnidSA/ai-for-developers-project-387/compare/v0.2.5...v0.2.6) (2026-11-24)
 
 
